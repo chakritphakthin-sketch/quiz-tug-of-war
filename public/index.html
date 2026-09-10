@@ -10,71 +10,89 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Kanit', sans-serif; background: #0f172a; color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; align-items: center; justify-content: center; transition: background 0.3s ease;}
 
-        .card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 25px; text-align: center; max-width: 450px; width: 90%; }
-        input { width: 100%; padding: 16px; font-size: 1.2em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; border: 2px solid #38bdf8; background: rgba(0,0,0,0.4); color: #fff; margin-bottom: 15px; text-align: center; }
-        .btn-3d { width: 100%; padding: 18px; font-size: 1.4em; font-family: 'Kanit'; font-weight: 900; border: none; border-radius: 16px; margin-bottom: 12px; color: white; cursor: pointer; }
-        .team-red { background: linear-gradient(180deg, #ef4444, #991b1b); }
-        .team-blue { background: linear-gradient(180deg, #3b82f6, #1e3a8a); }
+        .card { background: rgba(0, 0, 0, 0.6); border: 2px solid #eab308; box-shadow: 0 0 20px rgba(234,179,8,0.2); border-radius: 16px; padding: 25px; text-align: center; max-width: 450px; width: 90%; }
+        input { width: 100%; padding: 16px; font-size: 1.2em; font-family: 'Kanit'; font-weight: bold; border-radius: 8px; border: 2px solid #ca8a04; background: rgba(0,0,0,0.8); color: #fff; margin-bottom: 15px; text-align: center; outline:none;}
+        input:focus { border-color: #fef08a; }
+        
+        .btn-3d { width: 100%; padding: 18px; font-size: 1.4em; font-family: 'Kanit'; font-weight: 900; border: 2px solid rgba(255,255,255,0.2); border-radius: 12px; margin-bottom: 12px; color: white; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 0 rgba(0,0,0,0.5);}
+        .btn-3d:active { transform: translateY(4px); box-shadow: none; }
+        
+        /* สไตล์ปุ่มทีมให้เข้ากับ Squid Game (ชมพู/เขียว) แต่ชื่อทีมยังเป็น RED/BLUE */
+        .team-red { background: linear-gradient(180deg, #ec4899, #be185d); }
+        .team-blue { background: linear-gradient(180deg, #10b981, #047857); }
 
         #setup-container, #screen-reselect, #screen-eliminated, #screen-champion { display: none; width: 100%; justify-content: center; }
         #setup-container { display: flex; }
 
-        #game-container { display: none; flex-direction: column; height: 100vh; width: 100%; max-width: 800px; background: rgba(0,0,0,0.3); }
+        #game-container { display: none; flex-direction: column; height: 100vh; width: 100%; max-width: 800px; background: radial-gradient(circle at top, #1e293b, #020617); }
         
-        .mini-arena { flex: 0 0 30%; background: rgba(0,0,0,0.5); position: relative; border-bottom: 3px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; min-height: 180px; }
-        .arena-header { display: flex; justify-content: space-between; padding: 10px 15px; font-weight: bold; background: rgba(0,0,0,0.7); align-items: center;}
+        .mini-arena { flex: 0 0 30%; position: relative; border-bottom: 2px solid #ca8a04; display: flex; flex-direction: column; min-height: 180px; overflow:hidden;}
+        .arena-header { display: flex; justify-content: space-between; padding: 10px 15px; font-weight: bold; background: rgba(0,0,0,0.8); align-items: center; z-index: 50; border-bottom: 1px solid #475569;}
         
-        .btn-leave { background: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 8px; font-family: 'Kanit'; font-weight: bold; cursor: pointer; }
+        .btn-leave { background: #ef4444; color: white; border: none; padding: 5px 12px; border-radius: 6px; font-family: 'Kanit'; font-weight: bold; cursor: pointer; border: 1px solid #7f1d1d;}
 
-        .rope-system { position: absolute; top: 60%; left: 0; right: 0; height: 10px; transform: translateY(-50%); }
-        .rope-line { width: 100%; height: 8px; background: repeating-linear-gradient(45deg, #d4a373, #d4a373 5px, #a8794d 5px, #a8794d 10px); }
-        .rope-knot { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 35px; height: 35px; background: #facc15; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 10px #facc15; transition: left 0.2s linear; display: flex; justify-content: center; align-items: center; }
+        /* แท่นเหล็กหอคอยฉบับมินิ */
+        .tower-bg { position: absolute; bottom: 0; width: 100%; height: 50%; display: flex; justify-content: space-between; align-items: flex-end; }
+        .tower-plat { width: 40%; height: 100%; background: #ca8a04; position: relative; border-top: 6px solid #facc15; 
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.4) 10px, rgba(0,0,0,0.4) 20px); }
+        .tower-chasm { width: 20%; height: 100%; background: linear-gradient(to bottom, #000, #000); opacity: 0.8; }
+
+        .rope-system { position: absolute; bottom: 50%; left: 0; right: 0; height: 10px; transform: translateY(50%); z-index: 20;}
+        .rope-line { width: 100%; height: 6px; background: #e2e8f0; border-top: 1px solid #fff; border-bottom: 2px solid #64748b; box-shadow: 0 4px 6px rgba(0,0,0,0.8); }
+        .rope-knot { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 12px; height: 22px; background: #ef4444; border-radius: 2px; box-shadow: 0 0 10px #ef4444; transition: left 0.2s linear; }
 
         .quiz-section { flex: 1; padding: 15px; display: flex; flex-direction: column; position: relative; }
-        .q-box { background: rgba(255,255,255,0.15); padding: 15px; border-radius: 12px; font-size: 1.1em; font-weight: bold; margin-bottom: 12px; text-align: center; min-height: 70px; display: flex; align-items: center; justify-content: center; text-shadow: 1px 1px 2px #000; }
-        .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; }
-        .choice-btn { background: rgba(30, 41, 59, 0.9); border: 2px solid rgba(255,255,255,0.2); color: white; padding: 15px; font-size: 1.05em; font-weight: bold; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .q-box { background: rgba(0,0,0,0.5); border: 1px solid #ca8a04; padding: 15px; border-radius: 8px; font-size: 1.1em; font-weight: bold; margin-bottom: 12px; text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 15px rgba(0,0,0,0.8); }
+        .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; }
+        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 15px; font-size: 1.1em; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 0 #0f172a; transition: all 0.1s;}
+        .choice-btn:active { transform: translateY(4px); box-shadow: none; }
 
-        .floating-power { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5em; font-weight: 900; opacity: 0; pointer-events: none; z-index: 100; text-shadow: 2px 2px 5px #000; }
+        .floating-power { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 3em; font-weight: 900; opacity: 0; pointer-events: none; z-index: 100; text-shadow: 0 0 10px #000; }
         @keyframes floatUp { 0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -20px) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -70px) scale(0.8); } }
     </style>
 </head>
 <body>
     <div id="setup-container">
         <div class="card">
-            <h2 style="color: #38bdf8; margin-bottom: 15px;">🎮 เข้าร่วมศึกชักเย่อ</h2>
+            <h2 style="color: #facc15; margin-bottom: 5px; font-size: 2em; font-weight: 900; letter-spacing: 2px;">TUG OF WAR</h2>
+            <p style="color: #94a3b8; margin-bottom: 20px;">หอคอยมรณะ</p>
             <input type="number" id="pin-input" placeholder="รหัส PIN 6 หลัก" maxlength="6">
-            <input type="text" id="name-input" placeholder="ตั้งชื่อตัวละคร..." maxlength="12">
-            <button class="btn-3d team-red" onclick="joinRoom('RED')">🔴 TEAM RED</button>
-            <button class="btn-3d team-blue" onclick="joinRoom('BLUE')">🔵 TEAM BLUE</button>
+            <input type="text" id="name-input" placeholder="ตั้งชื่อผู้เล่น..." maxlength="12">
+            <button class="btn-3d team-red" onclick="joinRoom('RED')">🔺 TEAM RED</button>
+            <button class="btn-3d team-blue" onclick="joinRoom('BLUE')">🟢 TEAM BLUE</button>
         </div>
     </div>
 
     <div id="screen-reselect">
         <div class="card">
-            <h2 style="color: #facc15; margin-bottom: 10px;">🎉 คุณผ่านเข้ารอบ!</h2>
-            <p style="margin-bottom: 5px; color: #94a3b8;" id="survivor-count-txt">เหลือคนในห้องทั้งหมด: - คน</p>
-            <p style="margin-bottom: 20px; color: #38bdf8; font-weight:bold;" id="max-slot-txt">จำกัดทีมละ - คน</p>
-            <button class="btn-3d team-red" id="re-btn-red" onclick="selectTeamNextRound('RED')">🔴 JOIN RED</button>
-            <button class="btn-3d team-blue" id="re-btn-blue" onclick="selectTeamNextRound('BLUE')">🔵 JOIN BLUE</button>
-            <p id="reselect-status" style="margin-top:10px; color:#00ffcc; display:none; font-weight:bold; font-size:1.2em;">✅ เลือกทีมแล้ว รอ Host เริ่มเกม!</p>
-            <button class="btn-leave" style="margin-top:20px; width:100%; padding: 15px;" onclick="leaveRoom()">🚪 ยอมแพ้ / ออกจากห้อง</button>
+            <h2 style="color: #facc15; margin-bottom: 10px;">🎉 คุณรอดชีวิต!</h2>
+            <p style="margin-bottom: 5px; color: #94a3b8;" id="survivor-count-txt">เหลือผู้เล่นทั้งหมด: - คน</p>
+            <p style="margin-bottom: 20px; color: #eab308; font-weight:bold;" id="max-slot-txt">จำกัดทีมละ - คน</p>
+            <button class="btn-3d team-red" id="re-btn-red" onclick="selectTeamNextRound('RED')">🔺 JOIN RED</button>
+            <button class="btn-3d team-blue" id="re-btn-blue" onclick="selectTeamNextRound('BLUE')">🟢 JOIN BLUE</button>
+            <p id="reselect-status" style="margin-top:10px; color:#10b981; display:none; font-weight:bold; font-size:1.2em;">✅ เลือกทีมแล้ว รอเกมเริ่ม!</p>
+            <button class="btn-leave" style="margin-top:20px; width:100%; padding: 15px;" onclick="leaveRoom()">🚪 ยอมแพ้</button>
         </div>
     </div>
 
-    <div id="screen-eliminated"><div class="card" style="border-color: #ef4444;"><h1 style="font-size: 3em; color: #ef4444;">💥 ELIMINATED</h1><button class="btn-leave" style="margin-top:20px; padding: 10px 20px;" onclick="resetToSetup()">กลับหน้าหลัก</button></div></div>
-    <div id="screen-champion"><div class="card" style="border-color: #facc15;"><h1 style="font-size: 3.5em; color: #facc15;">🏆 แชมป์เปี้ยน!</h1><button class="btn-leave" style="margin-top:20px; padding: 10px 20px; background:#facc15; color:#000;" onclick="resetToSetup()">เล่นอีกครั้ง</button></div></div>
+    <div id="screen-eliminated"><div class="card" style="border-color: #ef4444;"><h1 style="font-size: 2.5em; color: #ef4444;">💥 คุณร่วงหล่น!</h1><p style="color:#94a3b8; margin-top:10px;">ELIMINATED</p><button class="btn-leave" style="margin-top:20px; padding: 10px 20px; width:100%;" onclick="resetToSetup()">กลับหน้าหลัก</button></div></div>
+    <div id="screen-champion"><div class="card" style="border-color: #facc15;"><h1 style="font-size: 3em; color: #facc15;">🏆 แชมป์เปี้ยน!</h1><p style="color:#fef08a; margin-top:10px;">ผู้รอดชีวิตคนสุดท้าย</p><button class="btn-leave" style="margin-top:20px; padding: 10px 20px; background:#facc15; color:#000; width:100%;" onclick="resetToSetup()">เล่นอีกครั้ง</button></div></div>
 
     <div id="game-container">
         <div class="mini-arena">
             <div class="arena-header">
-                <span><button class="btn-leave" onclick="leaveRoom()">🚪 ออก</button></span>
-                <span id="match-timer" style="color:#facc15; font-size:1.2em;">100s</span>
+                <span><button class="btn-leave" onclick="leaveRoom()">ออก</button></span>
+                <span id="match-timer" style="color:#facc15; font-size:1.2em; font-family:'Courier New', monospace; font-weight:900;">100</span>
             </div>
-            <div class="rope-system"><div class="rope-line"><div class="rope-knot" id="mini-knot">⚡</div></div></div>
+            <div class="tower-bg">
+                <div class="tower-plat" style="border-right: 2px solid #a16207;"></div>
+                <div class="tower-chasm"></div>
+                <div class="tower-plat" style="border-left: 2px solid #a16207;"></div>
+            </div>
+            <div class="rope-system"><div class="rope-line"><div class="rope-knot" id="mini-knot"></div></div></div>
         </div>
         <div class="quiz-section">
-            <div id="round-status" style="text-align:center; color:#facc15; text-shadow: 1px 1px 2px #000;">เตรียมพร้อม...</div>
+            <div id="round-status" style="text-align:center; color:#facc15; margin-bottom: 5px; font-size: 0.9em;">เตรียมพร้อม...</div>
             <div class="q-box" id="q-text">รอโจทย์...</div>
             <div class="grid-choices">
                 <button class="choice-btn" id="c0" onclick="sendAns(0)">-</button>
@@ -92,8 +110,8 @@
         let currentQIndex = 0;
 
         function setPlayerColor(team) {
-            if (team === 'RED') document.body.style.background = '#7f1d1d';
-            else if (team === 'BLUE') document.body.style.background = '#1e3a8a';
+            if (team === 'RED') document.body.style.background = 'radial-gradient(circle at center, #831843, #0f172a)';
+            else if (team === 'BLUE') document.body.style.background = 'radial-gradient(circle at center, #064e3b, #0f172a)';
             else document.body.style.background = '#0f172a';
         }
 
@@ -118,7 +136,7 @@
         socket.on('join_success', (data) => {
             setPlayerColor(data.team);
             hideAll(); document.getElementById('game-container').style.display = 'flex';
-            document.getElementById('q-text').innerText = '✅ อยู่ในห้องแล้วรอ Host เริ่ม...';
+            document.getElementById('q-text').innerText = '⏳ อยู่ในห้องแล้วรอ Host เริ่มเกม...';
             disableButtons(true);
         });
 
@@ -133,8 +151,8 @@
             currentRoomCode = data.newRoomCode;
             setPlayerColor(null);
             hideAll(); document.getElementById('screen-reselect').style.display = 'flex';
-            document.getElementById('survivor-count-txt').innerText = `เหลือผู้รอดชีวิตรวมบอท: ${data.remainingCount} ตัว/คน`;
-            document.getElementById('max-slot-txt').innerText = `(จำกัดโควต้าทีมละไม่เกิน ${data.maxPerTeam} คน)`;
+            document.getElementById('survivor-count-txt').innerText = `เหลือผู้รอดชีวิตรวมบอท: ${data.remainingCount} คน`;
+            document.getElementById('max-slot-txt').innerText = `(จำกัดโควต้าทีมละ ${data.maxPerTeam} คน)`;
             document.getElementById('reselect-status').style.display = 'none';
             document.getElementById('re-btn-red').style.display = 'block'; document.getElementById('re-btn-blue').style.display = 'block';
         });
@@ -156,7 +174,7 @@
         socket.on('you_are_champion', () => { setPlayerColor(null); hideAll(); document.getElementById('screen-champion').style.display = 'flex'; });
 
         function loadQuestion(qData, qIndex, total) {
-            document.getElementById('round-status').innerText = `ข้อที่ ${qIndex + 1} / ${total}`;
+            document.getElementById('round-status').innerText = `คำถามที่ ${qIndex + 1} / ${total}`;
             document.getElementById('q-text').innerText = qData.q;
             for (let i = 0; i < 4; i++) {
                 const btn = document.getElementById(`c${i}`); btn.innerText = qData.choices[i]; btn.disabled = false;
@@ -169,13 +187,13 @@
         socket.on('answer_feedback', (data) => {
             const floatEl = document.getElementById('float-power');
             floatEl.innerText = data.isCorrect ? `+${data.power}` : `-${data.power}`;
-            floatEl.style.color = data.isCorrect ? '#00ffcc' : '#ff4d4d';
+            floatEl.style.color = data.isCorrect ? '#10b981' : '#ef4444';
             floatEl.style.animation = 'none'; void floatEl.offsetWidth; 
             floatEl.style.animation = 'floatUp 0.8s ease-out forwards';
             currentQIndex = data.nextQIndex; loadQuestion(data.nextQData, currentQIndex, 10);
         });
 
-        socket.on('timer_tick', (t) => { document.getElementById('match-timer').innerText = t + 's'; });
+        socket.on('timer_tick', (t) => { document.getElementById('match-timer').innerText = t; });
         socket.on('update_rope', (data) => { document.getElementById('mini-knot').style.left = `${data.ropePosition}%`; });
     </script>
 </body>
