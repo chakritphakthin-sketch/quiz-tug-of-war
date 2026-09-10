@@ -9,25 +9,97 @@ const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-const MAX_PER_TEAM = 16;
 const ROUND_TIME = 60; 
 const rooms = {};
 
-const questions = [
-    { q: "กระแสไฟฟ้ามีหน่วยวัดเป็นอะไร?", choices: ["Volt", "Ampere", "Ohm", "Watt"], answer: 1 },
-    { q: "เมืองหลวงของประเทศไทยคือเมืองใด?", choices: ["เชียงใหม่", "ภูเก็ต", "กรุงเทพมหานคร", "พัทยา"], answer: 2 },
-    { q: "โลกหมุนรอบตัวเองใช้เวลากี่ชั่วโมง?", choices: ["12 ชั่วโมง", "24 ชั่วโมง", "30 วัน", "365 วัน"], answer: 1 },
-    { q: "ข้อใดต่อไปนี้จัดเป็นสัตว์เลี้ยงลูกด้วยนม?", choices: ["ฉลาม", "จระเข้", "วาฬ", "เต่าทะเล"], answer: 2 },
-    { q: "น้ำบริสุทธิ์ (H2O) ประกอบด้วยธาตุใดบ้าง?", choices: ["H และ O", "C และ O", "N และ O", "H และ C"], answer: 0 },
-    { q: "ดาวเคราะห์ดวงใดมีขนาดใหญ่ที่สุดในระบบสุริยะ?", choices: ["โลก", "ดาวอังคาร", "ดาวพฤหัสบดี", "ดาวเสาร์"], answer: 2 },
-    { q: "สัตว์ชนิดใดมีแปดขา?", choices: ["มด", "แมลงวัน", "แมงมุม", "ผึ้ง"], answer: 2 },
-    { q: "ธาตุที่มีสัญลักษณ์เคมีว่า 'Fe' คืออะไร?", choices: ["ทองแดง", "ทองคำ", "เหล็ก", "สังกะสี"], answer: 2 },
-    { q: "แสงเดินทางด้วยความเร็วประมาณเท่าใด?", choices: ["300,000 กม./วิ", "150,000 กม./วิ", "1,000,000 กม./วิ", "30,000 กม./วิ"], answer: 0 },
-    { q: "อวัยวะใดของมนุษย์ทำหน้าที่สูบฉีดเลือด?", choices: ["ปอด", "ตับ", "หัวใจ", "ไต"], answer: 2 }
+// --- ชุดคำถามแยกตามรอบ ---
+const questionsRound1 = [ // 16v16
+    { q: "1. ค่าความดันโลหิตปกติในผู้ใหญ่ควรน้อยกว่าเท่าใด?", choices: ["140/90 มม.ปรอท", "120/80 มม.ปรอท"], answer: 1 },
+    { q: "2. ความดันโลหิตตัวบน (Systolic) หมายถึงค่าใด?", choices: ["แรงดันขณะหัวใจบีบตัว", "แรงดันขณะหัวใจคลายตัว"], answer: 0 },
+    { q: "3. อาหารประเภทใดส่งผลให้ความดันโลหิตสูงขึ้นมากที่สุด?", choices: ["อาหารรสหวานจัด", "อาหารรสเค็มจัด (โซเดียมสูง)"], answer: 1 },
+    { q: "4. ข้อใดเป็นข้อปฏิบัติที่ถูกต้องก่อนทำการวัดความดันโลหิต?", choices: ["นั่งพักสงบๆ 3-5 นาที", "ดื่มกาแฟหรือชาทันทีเพื่อให้ตื่นตัว"], answer: 0 },
+    { q: "5. โรคความดันโลหิตสูงมักถูกเรียกว่าอะไร เนื่องจากระยะแรกมักไม่มีอาการเตือน?", choices: ["ภัยเงียบ", "โรคฉับพลัน"], answer: 0 },
+    { q: "6. พฤติกรรมในข้อใดช่วยลดระดับความดันโลหิตได้?", choices: ["การสูบบุหรี่เป็นประจำ", "การออกกำลังกายสม่ำเสมอ"], answer: 1 },
+    { q: "7. การรับประทานยาลดความดันโลหิตที่ถูกต้องคือข้อใด?", choices: ["ทานต่อเนื่องตามแพทย์สั่ง แม้ไม่มีอาการ", "หยุดทานทันทีเมื่อรู้สึกสบายดีขึ้น"], answer: 0 },
+    { q: "8. ค่าความดันโลหิตตัวล่าง (Diastolic) คืออะไร?", choices: ["แรงดันเลือดขณะหัวใจบีบตัว", "แรงดันเลือดขณะหัวใจคลายตัว"], answer: 1 },
+    { q: "9. ภาวะแทรกซ้อนอันตรายที่เกิดจากความดันโลหิตสูงเรื้อรังคือข้อใด?", choices: ["โรคหลอดเลือดสมองและหัวใจ", "โรคภูมิแพ้อากาศ"], answer: 0 },
+    { q: "10. เครื่องปรุงรสในข้อใดมีโซเดียมสูง ซึ่งผู้ป่วยความดันสูงควรหลีกเลี่ยง?", choices: ["น้ำมันพืช", "ผงชูรสและซีอิ๊ว"], answer: 1 }
 ];
 
-function getRandomQuestion() {
-    return questions[Math.floor(Math.random() * questions.length)];
+const questionsRound2 = [ // 8v8
+    { q: "11. ท่าทางการนั่งวัดความดันโลหิตที่ถูกต้องคือข้อใด?", choices: ["นั่งไขว่ห้างและเกร็งตัว", "นั่งหลังตรงและวางแขนให้อยู่ระดับหัวใจ"], answer: 1 },
+    { q: "12. ภาวะน้ำหนักเกินหรืออ้วนส่งผลอย่างไรต่อความดันโลหิต?", choices: ["ทำให้ความดันโลหิตมีแนวโน้มสูงขึ้น", "ช่วยให้ความดันโลหิตลดลงสู่เกณฑ์ปกติ"], answer: 0 },
+    { q: "13. การนอนหลับพักผ่อนไม่เพียงพอส่งผลอย่างไรต่อร่างกาย?", choices: ["อาจทำให้ความดันโลหิตสูงขึ้นได้", "ทำให้ความดันโลหิตคงที่ตลอดวัน"], answer: 0 },
+    { q: "14. ความเครียดสะสมส่งผลต่อระบบหลอดเลือดอย่างไร?", choices: ["ทำให้หลอดเลือดหดตัวและความดันสูงขึ้น", "ทำให้หลอดเลือดขยายตัวและความดันลดลง"], answer: 0 },
+    { q: "15. หากวัดความดันโลหิตได้ค่า 155/95 มม.ปรอท แปลผลได้อย่างไร?", choices: ["ความดันโลหิตปกติ", "ความดันโลหิตสูง"], answer: 1 },
+    { q: "16. สารอาหารชนิดใดในผักผลไม้ที่ช่วยขับโซเดียมและควบคุมความดัน?", choices: ["โพแทสเซียม", "คอเลสเตอรอล"], answer: 0 },
+    { q: "17. คำภาษาอังกฤษที่ใช้เรียก 'โรคความดันโลหิตสูง' คือข้อใด?", choices: ["Diabetes", "Hypertension"], answer: 1 },
+    { q: "18. การวัดความดันโลหิตเองที่บ้านมีประโยชน์อย่างไร?", choices: ["ช่วยติดตามค่าความดันจริงในชีวิตประจำวัน", "ใช้ทดแทนการกินยาตามที่แพทย์สั่งได้"], answer: 0 },
+    { q: "19. เมื่ออายุมากขึ้น ความยืดหยุ่นของหลอดเลือดลดลง จะส่งผลอย่างไร?", choices: ["เพิ่มความเสี่ยงต่อการเกิดโรคความดันโลหิตสูง", "ทำให้ความดันโลหิตลดต่ำลงเรื่อยๆ"], answer: 0 },
+    { q: "20. การดื่มเครื่องดื่มแอลกอฮอล์ปริมาณมากส่งผลอย่างไรต่อความดันโลหิต?", choices: ["ส่งผลให้ความดันโลหิตสูงขึ้น", "ช่วยให้หลอดเลือดแข็งแรงและดันโลหิตต่ำลง"], answer: 0 }
+];
+
+const questionsRound3 = [ // 4v4
+    { q: "ข้อ 1. ค่าความดันโลหิต 'ตัวล่าง' (Diastolic) แสดงถึงแรงดันเลือดในภาวะใด?", choices: ["ขณะหัวใจบีบตัว", "ขณะหัวใจคลายตัว"], answer: 1 },
+    { q: "ข้อ 2. ยาประหยัดโซเดียมหรือผงชูรสผงนัว มีส่วนประกอบของอะไรที่ทำให้ความดันสูงขึ้น?", choices: ["โซเดียม (Sodium)", "โพแทสเซียม (Potassium)"], answer: 0 },
+    { q: "ข้อ 3. 'ภาวะความดันโลหิตสูงแอบแฝง' (White Coat Hypertension) คืออาการอย่างไร?", choices: ["ความดันสูงเฉพาะเวลาเจอหมอ/วัดที่โรงพยาบาล", "ความดันสูงเฉพาะช่วงเวลาตื่นนอนตอนเช้า"], answer: 0 },
+    { q: "ข้อ 4. การสูบบุหรี่ส่งผลอย่างไรต่อหลอดเลือดในผู้ป่วยความดันโลหิตสูง?", choices: ["ทำให้หลอดเลือดหดตัวและตีบเกร็งทันที", "ทำให้หลอดเลือดขยายตัวมากเกินไปจนอักเสบ"], answer: 0 },
+    { q: "ข้อ 5. อวัยวะใดที่มีหน้าที่กรองของเสียและมักได้รับความเสียหายอย่างหนักจากโรคความดันสูงเรื้อรัง?", choices: ["ตับ", "ไต"], answer: 1 },
+    { q: "ข้อ 6. เครื่องดื่มแอลกอฮอล์ส่งผลต่อระดับความดันโลหิตอย่างไร?", choices: ["หากดื่มปริมาณมากเป็นประจำจะทำให้ความดันพุ่งสูงขึ้น", "ช่วยขยายหลอดเลือดและทำให้ความดันลดลงอย่างยั่งยืน"], answer: 0 },
+    { q: "ข้อ 7. ผู้ที่มีภาวะหยุดหายใจขณะหลับจากการอุดกั้น (Snoring/Sleep Apnea) มีความเสี่ยงต่อความดันโลหิตสูงหรือไม่?", choices: ["มีความเสี่ยงสูง เพราะร่างกายขาดออกซิเจนเป็นช่วงๆ ทำให้ความดันพุ่งสูงตอนกลางคืน", "ไม่มีความเสี่ยง เพราะความดันจะลดลงเสมอขณะนอนหลับ"], answer: 0 },
+    { q: "ข้อ 8. ปริมาณโซเดียมที่องค์การอนามัยโลก (WHO) แนะนำให้บริโภคไม่เกินต่อวันคือเท่าใด?", choices: ["ไม่เกิน 2,000 มิลลิกรัม (เกลือประมาณ 1 ช้อนชา)", "ไม่เกิน 5,000 มิลลิกรัม (เกลือประมาณ 1 ช้อนโต๊ะ)"], answer: 0 },
+    { q: "ข้อ 9. แร่ธาตุชนิดใดในอาหาร (เช่น บานาน่า/ผักใบเขียว) ที่ช่วยขับโซเดียมและลดความดันโลหิตได้ดี?", choices: ["แคลเซียม", "โพแทสเซียม"], answer: 1 },
+    { q: "ข้อ 10. ก่อนทำการวัดความดันโลหิต ไม่ควรกินกาแฟหรือดื่มชาล่วงหน้ากี่นาที?", choices: ["อย่างน้อย 30 นาที", "ไม่ต้องเว้นระยะ สามารถดื่มแล้ววัดได้ทันที"], answer: 0 }
+];
+
+const questionsRound4 = [ // 2v2
+    { q: "ข้อ 11. ขณะทำการวัดความดันโลหิต ตำแหน่งของแขนและปลอกแขน (Cuff) ควรอยู่ที่ระดับใด?", choices: ["ระดับเดียวกับหัวใจ", "วางต่ำกว่าระดับหัวใจลงไปที่หน้าตัก"], answer: 0 },
+    { q: "ข้อ 12. หากวัดความดันโลหิตได้ค่า 140/90 mmHg ถือว่าอยู่ในเกณฑ์ใด?", choices: ["ความดันโลหิตสูง (Stage 1)", "ความดันโลหิตปกติสมบูรณ์แบบ"], answer: 0 },
+    { q: "ข้อ 13. อาหารรูปแบบ DASH Diet (Dietary Approaches to Stop Hypertension) เน้นทานอะไรเป็นหลัก?", choices: ["ผัก ผลไม้ ธัญพืช ถั่ว และเนื้อสัตว์ไขมันต่ำ", "เน้นทานแป้งขัดขาว ผัดน้ำมันทอด และเนื้อสัตว์ติดมัน"], answer: 0 },
+    { q: "ข้อ 14. โรคความดันโลหิตสูงส่วนใหญ่ (มากกว่า 90%) เป็นประเภทใด?", choices: ["ไม่ทราบสาเหตุแน่ชัด (Primary/Essential Hypertension)", "มีสาเหตุมาจากเนื้องอกในสมองโดยตรง"], answer: 0 },
+    { q: "ข้อ 15. ภาวะน้ำหนักตัวเกินหรืออ้วน ส่งผลต่อความดันโลหิตอย่างไร?", choices: ["ทำให้หัวใจต้องสูบฉีดเลือดไปเลี้ยงร่างกายมากขึ้น ความดันจึงสูงขึ้น", "ช่วยให้หลอดเลือดขยายตัวได้กว้างขึ้น ทำให้ความดันลดลง"], answer: 0 },
+    { q: "ข้อ 16. การนอนหลับพักผ่อนไม่เพียงพอ (น้อยกว่า 6 ชั่วโมงต่อคืน) ส่งผลต่อความดันอย่างไร?", choices: ["กระตุ้นระบบประสาทซิมพาเทติก ทำให้ความดันและหัวใจทำงานหนักขึ้น", "ช่วยให้หลอดเลือดได้คลายตัว ความดันจึงต่ำลง"], answer: 0 },
+    { q: "ข้อ 17. ผู้ป่วยความดันสูงที่ทานยาลดความดันเป็นประจำ สามารถซื้อยามโนราห์/ยาแก้ปวดกลุ่ม NSAIDs (เช่น ไอบูโพรเฟน) ทานเองได้หรือไม่?", choices: ["ควรระวังและปรึกษาเภสัชกร เพราะยาแก้ปวดกลุ่มนี้อาจทำให้ความดันสูงขึ้นและต้านฤทธิ์ยาลดความดัน", "ทานได้เสรี เพราะยาแก้ปวดไม่มีผลต่อระบบหลอดเลือดและหัวใจ"], answer: 0 },
+    { q: "ข้อ 18. เส้นประสาทตาและจอตา (Retina) สามารถได้รับความเสียหายจากโรคความดันโลหิตสูงได้หรือไม่?", choices: ["ได้ อาจเกิดภาวะจอประสาทตาเสื่อมจากความดันสูง (Hypertensive Retinopathy)", "ไม่ได้ ดวงตาเป็นอวัยวะที่ไม่เกี่ยวกับแรงดันเลือด"], answer: 0 },
+    { q: "ข้อ 19. ในผู้สูงอายุ มักพบภาวะความดันโลหิตสูงชนิดใดบ่อยที่สุด?", choices: ["ความดันตัวบนสูงอย่างเดียว (Isolated Systolic Hypertension)", "ความดันตัวล่างสูงอย่างเดียว"], answer: 0 },
+    { q: "ข้อ 20. ข้อใดคือความเข้าใจผิดที่อันตรายที่สุดเกี่ยวกับโรคความดันโลหิตสูง?", choices: ["\"ถ้าไม่มีอาการปวดหัว มึนหัว แสดงว่าความดันปกติ ไม่จำเป็นต้องกินยา\"", "\"ต้องวัดความดันเป็นประจำแม้วันที่รู้สึกสบายดี\""], answer: 0 }
+];
+
+const questionsRound5Raw = [ // 1v1 (สุ่มสลับคำตอบ)
+    { q: "1. คนเป็นโรคความดันโลหิตสูง ถ้าอาการกำเริบต้องรีบไปที่ไหน?", correct: "โรงพยาบาล", wrong: "วัด" },
+    { q: "2. ทำไมหมอถึงบอกว่าความดันโลหิตสูงเปรียบเหมือน 'ความรัก'?", correct: "เพราะไม่มีสัญญาณเตือนล่วงหน้า", wrong: "เพราะยิ่งใกล้ ยิ่งใจสั่น" },
+    { q: "3. ยารักษาความดันโลหิต ยี่ห้อไหนกินแล้วความดันลดไวที่สุด?", correct: "ยาตามสั่งแพทย์", wrong: "ยา 3 ชั้น" },
+    { q: "4. กิจกรรมใดอาจส่งผลให้เกิดความดันสูง", correct: "กินของเค็มเยอะ", wrong: "ดันพื้น" },
+    { q: "5. พฤติกรรมแบบไหนที่ช่วยให้ความดัน 'ลดลง' ได้รวดเร็วที่สุด?", correct: "กินยาลดความดัน", wrong: "ผลักความดันออกไป" },
+    { q: "6. ถ้าอยากรู้ว่าตัวเองความดันสูงไหม ต้องไปคุยกับใคร?", correct: "หมอ", wrong: "ช่างไฟ" },
+    { q: "7. ค่าความดันโลหิตตัวไหนที่อันตรายที่สุด?", correct: "ตัวบนสูงเกินไป", wrong: "ตัวที่อยู่ข้างหลังเรา" },
+    { q: "8. เครื่องมือชนิดไหนที่คนเป็นความดันกลัวมากที่สุด?", correct: "เครื่องวัดความดัน", wrong: "แม่แรงยกรถ" },
+    { q: "9. ทำไมเวลาเครียด ความดันถึงพุ่งสูงขึ้น?", correct: "เส้นเลือดหดตัว", wrong: "เพราะความรักทำให้คนตาบอด" },
+    { q: "10. ทำไมคนเป็นความดันโลหิตสูงไม่ควรออกกำลังกายหนัก ?", correct: "เพราะจะทำให้ความดันพุ่งสูง", wrong: "เพราะมันเหนื่อย" }
+];
+
+function getRandomQuestion(roundNumber) {
+    if (roundNumber === 1) return questionsRound1[Math.floor(Math.random() * questionsRound1.length)];
+    if (roundNumber === 2) return questionsRound2[Math.floor(Math.random() * questionsRound2.length)];
+    if (roundNumber === 3) return questionsRound3[Math.floor(Math.random() * questionsRound3.length)];
+    if (roundNumber === 4) return questionsRound4[Math.floor(Math.random() * questionsRound4.length)];
+
+    // รอบ 5 ขึ้นไป (1v1): สุ่มสลับตำแหน่ง ก กับ ข
+    const raw = questionsRound5Raw[Math.floor(Math.random() * questionsRound5Raw.length)];
+    const isCorrectFirst = Math.random() < 0.5;
+    return {
+        q: raw.q,
+        choices: isCorrectFirst ? [raw.correct, raw.wrong] : [raw.wrong, raw.correct],
+        answer: isCorrectFirst ? 0 : 1
+    };
+}
+
+function getTargetCapacity(roundNumber) {
+    if (roundNumber === 1) return 16;
+    if (roundNumber === 2) return 8;
+    if (roundNumber === 3) return 4;
+    if (roundNumber === 4) return 2;
+    return 1; // 1v1
 }
 
 function generateRoomCode() {
@@ -48,8 +120,9 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         if (!room || room.state !== 'waiting') return socket.emit('join_error', 'ไม่สามารถเข้าร่วมได้ในขณะนี้!');
 
+        const maxPerTeam = getTargetCapacity(room.roundNumber);
         const teamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
-        if (teamPlayers.length >= MAX_PER_TEAM) return socket.emit('join_error', `ทีมเต็มแล้ว!`);
+        if (teamPlayers.length >= maxPerTeam) return socket.emit('join_error', `ทีมเต็มแล้ว! (รับสูงสุด ${maxPerTeam} คน)`);
 
         let freeSlot = 0;
         while (teamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
@@ -66,14 +139,14 @@ io.on('connection', (socket) => {
         const player = room.players[socket.id];
         if (!player || player.team === targetTeam) return;
 
+        const maxPerTeam = getTargetCapacity(room.roundNumber);
         const targetTeamPlayers = Object.values(room.players).filter(p => p.team === targetTeam && p.status === 'active');
-        if (targetTeamPlayers.length >= MAX_PER_TEAM) return socket.emit('join_error', `ทีมเต็ม!`);
+        if (targetTeamPlayers.length >= maxPerTeam) return socket.emit('join_error', `ทีมเต็ม!`);
 
         let freeSlot = 0;
         while (targetTeamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
 
-        player.team = targetTeam;
-        player.slot = freeSlot;
+        player.team = targetTeam; player.slot = freeSlot;
         socket.emit('team_switched', { team: targetTeam, slot: freeSlot });
         updateLobby(roomCode);
     });
@@ -95,8 +168,9 @@ io.on('connection', (socket) => {
     socket.on('add_bot', ({ roomCode, team }) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id || room.state !== 'waiting') return;
+        const maxPerTeam = getTargetCapacity(room.roundNumber);
         const teamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
-        if (teamPlayers.length >= MAX_PER_TEAM) return;
+        if (teamPlayers.length >= maxPerTeam) return;
 
         let freeSlot = 0;
         while (teamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
@@ -111,12 +185,33 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
 
+        // --- ระบบเติมบอทอัตโนมัติให้ครบทั้งสองทีมก่อนเริ่มเกม ---
+        const maxPerTeam = getTargetCapacity(room.roundNumber);
+        ['RED', 'BLUE'].forEach(team => {
+            let activeTeamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
+            while (activeTeamPlayers.length < maxPerTeam) {
+                let freeSlot = 0;
+                const activeSlots = activeTeamPlayers.map(p => p.slot);
+                while (activeSlots.includes(freeSlot)) freeSlot++;
+
+                room.botCount++;
+                const botId = `bot_${Date.now()}_${room.botCount}_${Math.random()}`;
+                const newBot = { id: botId, name: `🤖 บอท ${room.botCount}`, team, slot: freeSlot, status: 'active', isBot: true };
+                room.players[botId] = newBot;
+                activeTeamPlayers.push(newBot);
+            }
+        });
+        updateLobby(roomCode);
+
         room.state = 'playing'; room.ropePosition = 50;
         io.to(roomCode).emit('match_started');
 
+        // ส่งคำถามและบันทึกคำถามไว้ประจำตัวผู้เล่น
         for (let pId in room.players) {
             if (!room.players[pId].isBot && room.players[pId].status === 'active') {
-                io.to(pId).emit('new_question', getRandomQuestion());
+                const qObj = getRandomQuestion(room.roundNumber);
+                room.players[pId].currentQuestion = qObj;
+                io.to(pId).emit('new_question', qObj);
             }
         }
 
@@ -150,15 +245,14 @@ io.on('connection', (socket) => {
         }, 1000);
     });
 
-    socket.on('submit_answer', ({ roomCode, answerIndex, qText }) => {
+    socket.on('submit_answer', ({ roomCode, answerIndex }) => {
         const room = rooms[roomCode];
         if (!room || room.state !== 'playing') return;
 
         const player = room.players[socket.id];
-        if (!player || player.status !== 'active') return;
+        if (!player || player.status !== 'active' || !player.currentQuestion) return;
 
-        const originalQ = questions.find(q => q.q === qText);
-        const isCorrect = originalQ && (answerIndex === originalQ.answer);
+        const isCorrect = (answerIndex === player.currentQuestion.answer);
         let power = isCorrect ? 3.5 : 0;
 
         if (isCorrect) {
@@ -171,7 +265,11 @@ io.on('connection', (socket) => {
         io.to(roomCode).emit('update_rope', { ropePosition: room.ropePosition, lastPuller: { id: player.id, name: player.name, team: player.team } });
 
         setTimeout(() => {
-            if (room.state === 'playing' && player.status === 'active') socket.emit('new_question', getRandomQuestion());
+            if (room.state === 'playing' && player.status === 'active') {
+                const nextQ = getRandomQuestion(room.roundNumber);
+                player.currentQuestion = nextQ;
+                socket.emit('new_question', nextQ);
+            }
         }, 1000);
     });
 
