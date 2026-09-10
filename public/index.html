@@ -168,7 +168,7 @@
 
         socket.on('answer_feedback', (data) => {
             const floatEl = document.getElementById('float-power');
-            floatEl.innerText = data.isCorrect ? `+${data.power}` : `❌`;
+            floatEl.innerText = data.isCorrect ? `+${data.power}` : `-${data.power}`;
             floatEl.style.color = data.isCorrect ? '#00ffcc' : '#ff4d4d';
             floatEl.style.animation = 'none'; void floatEl.offsetWidth; 
             floatEl.style.animation = 'floatUp 0.8s ease-out forwards';
