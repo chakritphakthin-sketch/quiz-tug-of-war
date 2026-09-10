@@ -83,26 +83,26 @@ io.on('connection', (socket) => {
         });
     });
 
-    socket.on('switch_team', ({ roomCode }) => {
+    // ระบบเปลี่ยนทีมแบบระบุเป้าหมาย (ซ้าย-ขวา แบบ PB)
+    socket.on('change_team', ({ roomCode, targetTeam }) => {
         const room = rooms[roomCode];
         if (!room || room.state !== 'waiting') return;
         const player = room.players[socket.id];
-        if (!player) return;
+        if (!player || player.team === targetTeam) return;
 
-        const newTeam = player.team === 'RED' ? 'BLUE' : 'RED';
-        const teamPlayers = Object.values(room.players).filter(p => p.team === newTeam);
+        const teamPlayers = Object.values(room.players).filter(p => p.team === targetTeam);
         if (teamPlayers.length >= MAX_PER_TEAM) {
-            return socket.emit('join_error', `ทีม ${newTeam === 'RED' ? 'แดง' : 'น้ำเงิน'} เต็มแล้ว!`);
+            return socket.emit('join_error', `ทีม ${targetTeam === 'RED' ? 'แดง' : 'น้ำเงิน'} เต็มแล้ว!`);
         }
 
         const takenSlots = teamPlayers.map(p => p.slot);
         let freeSlot = 0;
         while (takenSlots.includes(freeSlot)) freeSlot++;
 
-        player.team = newTeam;
+        player.team = targetTeam;
         player.slot = freeSlot;
 
-        socket.emit('team_switched', { team: newTeam, slot: freeSlot });
+        socket.emit('team_switched', { team: targetTeam, slot: freeSlot });
 
         io.to(roomCode).emit('update_lobby', {
             players: Object.values(room.players),
