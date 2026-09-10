@@ -9,65 +9,51 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Kanit', sans-serif; background: radial-gradient(circle at center top, #1e1e38, #0a0a14); color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
-        #lock-screen { display: flex; align-items: center; justify-content: center; height: 100vh; text-align: center; }
+        #lock-screen { display: flex; align-items: center; justify-content: center; height: 100vh; }
         #create-screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
         .btn-create { padding: 20px 40px; font-size: 2em; font-family: 'Kanit'; font-weight: 900; background: linear-gradient(90deg, #10b981, #059669); color: white; border: none; border-radius: 20px; cursor: pointer; }
 
         #arena-screen { display: none; flex-direction: column; height: 100vh; }
         .header { background: rgba(0, 0, 0, 0.6); padding: 10px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(255,255,255,0.1); }
-        .pin-badge { font-family: 'Orbitron', sans-serif; font-size: 2em; color: #facc15; background: rgba(250,204,21,0.1); padding: 5px 15px; border-radius: 12px; border: 2px solid #facc15; }
+        .pin-badge { font-family: 'Orbitron'; font-size: 2em; color: #facc15; background: rgba(250,204,21,0.1); padding: 5px 15px; border-radius: 12px; border: 2px solid #facc15; }
 
-        .btn-start { padding: 10px 25px; font-size: 1.3em; font-family: 'Kanit'; font-weight: 900; background: linear-gradient(90deg, #00c6ff, #0072ff); color: white; border: none; border-radius: 12px; cursor: pointer; }
+        .btn-start { padding: 10px 25px; font-size: 1.3em; font-weight: 900; background: linear-gradient(90deg, #00c6ff, #0072ff); color: white; border: none; border-radius: 12px; cursor: pointer; }
 
-        .timer-display { font-family: 'Orbitron', sans-serif; font-size: 3em; color: #00ffcc; text-shadow: 0 0 20px #00ffcc; }
+        .timer-display { font-family: 'Orbitron'; font-size: 3em; color: #00ffcc; text-shadow: 0 0 20px #00ffcc; }
 
-        .host-quiz-panel { background: rgba(255,255,255,0.05); border: 2px dashed #facc15; margin: 10px 20px; padding: 12px 20px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; }
-        .host-q-title { font-size: 1.2em; color: #facc15; font-weight: bold; margin-bottom: 5px; }
-        .host-choices-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; margin-top: 8px; }
-        .host-choice-btn { background: #334155; color: white; border: none; padding: 8px; border-radius: 8px; font-family: 'Kanit'; font-weight: bold; cursor: pointer; }
-
+        .host-quiz-panel { background: rgba(255,255,255,0.05); border: 2px dashed #facc15; margin: 10px 20px; padding: 12px 20px; border-radius: 16px; text-align: center; }
+        
         .stage { flex: 1; display: flex; position: relative; }
         .cliff { width: 38%; height: 70%; position: absolute; bottom: 0; padding: 15px; display: flex; flex-direction: column; }
-        .cliff-left { left: 0; background: linear-gradient(160deg, #ff2a5f, #7a001c); border-radius: 0 50px 0 0; border-right: 4px solid #ff4d79; }
-        .cliff-right { right: 0; background: linear-gradient(-160deg, #00d2ff, #003a7a); border-radius: 50px 0 0 0; border-left: 4px solid #33ddff; }
+        .cliff-left { left: 0; background: linear-gradient(160deg, #ff2a5f, #7a001c); border-radius: 0 50px 0 0; }
+        .cliff-right { right: 0; background: linear-gradient(-160deg, #00d2ff, #003a7a); border-radius: 50px 0 0 0; }
 
         .grid-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
-        .slot-box { background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2); border-radius: 8px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.75em; }
+        .slot-box { background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2); border-radius: 8px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.8em; }
         .slot-box.filled { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.4); }
 
         .chasm { position: absolute; left: 38%; right: 38%; height: 100%; background: #05050a; z-index: -1; }
         .rope-system { position: absolute; top: 40%; left: 5%; right: 5%; height: 20px; z-index: 20; }
         .rope-line { width: 100%; height: 14px; background: repeating-linear-gradient(45deg, #d4a373, #d4a373 10px, #a8794d 10px, #a8794d 20px); border-radius: 10px; position: relative; }
-        .rope-knot { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 44px; height: 44px; background: #facc15; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 25px #facc15; transition: left 0.2s linear; display: flex; align-items: center; justify-content: center; font-size: 1.2em; }
+        .rope-knot { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 44px; height: 44px; background: #facc15; border-radius: 50%; border: 3px solid #fff; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
-    <div id="lock-screen">
-        <h1 style="color:#ef4444;">🔒 เติม ?admin=true ท้าย URL เพื่อเข้าใช้งาน Host</h1>
-    </div>
+    <div id="lock-screen"><h1 style="color:#ef4444;">🔒 เติม ?admin=true ท้าย URL</h1></div>
 
     <div id="create-screen">
-        <h1 style="font-size: 3em; margin-bottom: 20px;">🎮 ARENA HOST CONTROL</h1>
-        <button class="btn-create" onclick="createRoom()">➕ สร้างห้องแข่งขันใหม่</button>
+        <button class="btn-create" onclick="createRoom()">➕ สร้างห้องแข่งขัน</button>
     </div>
 
     <div id="arena-screen">
         <div class="header">
-            <div>
-                <span style="color: #94a3b8;">ROOM PIN:</span>
-                <span class="pin-badge" id="display-pin">------</span>
-            </div>
+            <div><span style="color: #94a3b8;">ROOM PIN:</span> <span class="pin-badge" id="display-pin">------</span></div>
             <div class="timer-display" id="timer-box">100</div>
-            <div>
-                <button class="btn-start" id="start-btn" onclick="startMatch()">🚀 เริ่มรอบแข่งขัน</button>
-                <button class="btn-start" id="reset-btn" onclick="resetLobby()" style="display:none; background:#f59e0b;">🔄 เริ่มรอบต่อไป (รอผู้เล่นเลือกทีม)</button>
-            </div>
+            <div><button class="btn-start" id="start-btn" onclick="startMatch()">🚀 เริ่มการแข่งขัน</button></div>
         </div>
 
         <div class="host-quiz-panel">
-            <div class="host-q-title" id="host-panel-title">👑 HOST FUN QUIZ</div>
-            <div id="host-q-text" style="font-size:1.1em;">กดเริ่มเกมเพื่อเริ่มศึกชักเย่อ...</div>
-            <div class="host-choices-grid" id="host-choices"></div>
+            <h2 id="host-q-text" style="color:#facc15;">รอผู้เล่นเข้าห้อง (แบ่งทีม 8v8 ได้เลย)</h2>
         </div>
 
         <div class="stage">
@@ -75,14 +61,10 @@
                 <h2>🔴 RED TEAM (<span id="red-count">0</span>)</h2>
                 <div class="grid-slots" id="red-slots"></div>
             </div>
-
             <div class="chasm"></div>
             <div class="rope-system">
-                <div class="rope-line">
-                    <div class="rope-knot" id="knot">⚡</div>
-                </div>
+                <div class="rope-line"><div class="rope-knot" id="knot">⚡</div></div>
             </div>
-
             <div class="cliff cliff-right">
                 <h2 style="text-align: right;">BLUE TEAM 🔵 (<span id="blue-count">0</span>)</h2>
                 <div class="grid-slots" id="blue-slots"></div>
@@ -92,17 +74,14 @@
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
-        const isAdmin = urlParams.get('admin') === 'true';
-        let currentRoomCode = '';
-        let hostQuestions = [];
-        let hostQIdx = 0;
-
-        if (isAdmin) {
+        if (urlParams.get('admin') === 'true') {
             document.getElementById('lock-screen').style.display = 'none';
             document.getElementById('create-screen').style.display = 'flex';
         }
 
         const socket = io();
+        let currentRoomCode = '';
+
         function createRoom() { socket.emit('create_room'); }
 
         socket.on('room_created', (data) => {
@@ -151,58 +130,27 @@
         function startMatch() { socket.emit('start_match', { roomCode: currentRoomCode }); }
         socket.on('start_error', (msg) => alert(msg));
 
-        function resetLobby() {
-            socket.emit('reset_to_lobby', { roomCode: currentRoomCode });
-            document.getElementById('reset-btn').style.display = 'none';
-            document.getElementById('start-btn').style.display = 'inline-block';
-            document.getElementById('timer-box').innerText = "100";
-            document.getElementById('knot').style.left = '50%';
-            document.getElementById('host-q-text').innerText = "รอผู้เล่นเลือกทีมใหม่...";
-            document.getElementById('host-choices').innerHTML = "";
-        }
-
-        socket.on('match_started', (data) => {
+        socket.on('match_started', () => {
             document.getElementById('start-btn').style.display = 'none';
             document.getElementById('knot').style.left = '50%';
-            hostQuestions = data.questions;
-            hostQIdx = 0;
-            renderHostQuiz();
+            document.getElementById('host-q-text').innerText = "🔥 การต่อสู้เริ่มขึ้นแล้ว! 🔥";
         });
-
-        function renderHostQuiz() {
-            if (!hostQuestions.length) return;
-            const q = hostQuestions[hostQIdx];
-            document.getElementById('host-q-text').innerText = `ข้อ ${hostQIdx+1}: ${q.q}`;
-            const box = document.getElementById('host-choices');
-            box.innerHTML = '';
-            q.choices.forEach((c, idx) => {
-                const btn = document.createElement('button');
-                btn.className = 'host-choice-btn';
-                btn.innerText = c;
-                btn.onclick = () => {
-                    if (idx === q.answer) alert("🎉 ตอบถูก!");
-                    else alert("❌ ตอบผิด!");
-                    hostQIdx = (hostQIdx + 1) % hostQuestions.length;
-                    renderHostQuiz();
-                };
-                box.appendChild(btn);
-            });
-        }
 
         socket.on('timer_tick', (t) => { document.getElementById('timer-box').innerText = t; });
         socket.on('update_rope', (data) => { document.getElementById('knot').style.left = `${data.ropePosition}%`; });
 
+        // เมื่อจบรอบและยังมีคนรอดชีวิต
         socket.on('round_ended_survivors', (data) => {
-            document.getElementById('host-q-text').innerText = `🏁 จบการแข่งขัน! ทีม ${data.winningTeam} ชนะ! ผู้เล่นฝั่งแพ้ถูกคัดออก เหลือผู้รอดชีวิต ${data.remainingCount} คน`;
-            document.getElementById('host-choices').innerHTML = '';
-            document.getElementById('reset-btn').style.display = 'inline-block';
+            document.getElementById('knot').style.left = '50%';
+            document.getElementById('timer-box').innerText = "100";
+            document.getElementById('host-q-text').innerText = `🏁 จบรอบ! ทีม ${data.winningTeam} ชนะ รอผู้รอดชีวิต ${data.remainingCount} คนเลือกทีมใหม่...`;
+            document.getElementById('start-btn').style.display = 'inline-block';
+            document.getElementById('start-btn').innerText = "🚀 เริ่มรอบต่อไป";
         });
 
         socket.on('champion_declared', (data) => {
-            document.getElementById('host-q-text').innerHTML = `<h1 style="color:#facc15;">👑 ขอยินดีกับผู้ชนะเลิศ: ${data.champName} 🏆</h1>`;
-            document.getElementById('host-choices').innerHTML = '';
+            document.getElementById('host-q-text').innerHTML = `👑 ขอแสดงความยินดีกับผู้ชนะเลิศ: ${data.champName} 🏆`;
             document.getElementById('start-btn').style.display = 'none';
-            document.getElementById('reset-btn').style.display = 'none';
         });
     </script>
 </body>
