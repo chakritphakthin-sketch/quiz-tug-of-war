@@ -1,322 +1,297 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quiz Tug of War</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700;900&family=Orbitron:wght@900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { font-family: 'Kanit', sans-serif; background: #0b0f19; color: white; height: 100vh; overflow: hidden; }
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+        .ui-layer { position: absolute; inset: 0; z-index: 100; pointer-events: none; }
+        .ui-content { pointer-events: auto; }
 
-app.use(express.static(path.join(__dirname, 'public')));
+        .top-bar { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .pin-pill { font-family: 'Orbitron'; font-size: 1.1em; color: #000; background: #facc15; padding: 6px 16px; border-radius: 20px; font-weight: 900; }
+        .timer-pill { font-family: 'Orbitron'; font-size: 1.6em; color: #00ffcc; text-shadow: 0 0 10px #00ffcc; font-weight: 900; }
 
-const ROUND_TIME = 60; 
-const rooms = {};
+        .waiting-badge { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 8px 20px; border-radius: 20px; font-size: 1.1em; font-weight: bold; color: #00ffcc; border: 1px solid rgba(0,255,204,0.3); white-space: nowrap; }
 
-// --- ชุดคำถามแยกตามรอบ ---
-const questionsRound1 = [ // 16v16
-    { q: "1. ค่าความดันโลหิตปกติในผู้ใหญ่ควรน้อยกว่าเท่าใด?", choices: ["140/90 มม.ปรอท", "120/80 มม.ปรอท"], answer: 1 },
-    { q: "2. ความดันโลหิตตัวบน (Systolic) หมายถึงค่าใด?", choices: ["แรงดันขณะหัวใจบีบตัว", "แรงดันขณะหัวใจคลายตัว"], answer: 0 },
-    { q: "3. อาหารประเภทใดส่งผลให้ความดันโลหิตสูงขึ้นมากที่สุด?", choices: ["อาหารรสหวานจัด", "อาหารรสเค็มจัด (โซเดียมสูง)"], answer: 1 },
-    { q: "4. ข้อใดเป็นข้อปฏิบัติที่ถูกต้องก่อนทำการวัดความดันโลหิต?", choices: ["นั่งพักสงบๆ 3-5 นาที", "ดื่มกาแฟหรือชาทันทีเพื่อให้ตื่นตัว"], answer: 0 },
-    { q: "5. โรคความดันโลหิตสูงมักถูกเรียกว่าอะไร เนื่องจากระยะแรกมักไม่มีอาการเตือน?", choices: ["ภัยเงียบ", "โรคฉับพลัน"], answer: 0 },
-    { q: "6. พฤติกรรมในข้อใดช่วยลดระดับความดันโลหิตได้?", choices: ["การสูบบุหรี่เป็นประจำ", "การออกกำลังกายสม่ำเสมอ"], answer: 1 },
-    { q: "7. การรับประทานยาลดความดันโลหิตที่ถูกต้องคือข้อใด?", choices: ["ทานต่อเนื่องตามแพทย์สั่ง แม้ไม่มีอาการ", "หยุดทานทันทีเมื่อรู้สึกสบายดีขึ้น"], answer: 0 },
-    { q: "8. ค่าความดันโลหิตตัวล่าง (Diastolic) คืออะไร?", choices: ["แรงดันเลือดขณะหัวใจบีบตัว", "แรงดันเลือดขณะหัวใจคลายตัว"], answer: 1 },
-    { q: "9. ภาวะแทรกซ้อนอันตรายที่เกิดจากความดันโลหิตสูงเรื้อรังคือข้อใด?", choices: ["โรคหลอดเลือดสมองและหัวใจ", "โรคภูมิแพ้อากาศ"], answer: 0 },
-    { q: "10. เครื่องปรุงรสในข้อใดมีโซเดียมสูง ซึ่งผู้ป่วยความดันสูงควรหลีกเลี่ยง?", choices: ["น้ำมันพืช", "ผงชูรสและซีอิ๊ว"], answer: 1 }
-];
+        .bottom-join-bar { position: absolute; bottom: 20px; left: 15px; right: 15px; display: flex; gap: 12px; }
+        .btn-join-team { flex: 1; padding: 16px 10px; font-size: 1.2em; font-family: 'Kanit'; font-weight: 900; border: none; border-radius: 16px; color: white; cursor: pointer; transition: 0.1s; }
+        .btn-join-team:active { transform: translateY(4px); }
+        .btn-join-red { background: linear-gradient(180deg, #ff4d4d, #dc2626); box-shadow: 0 5px 0 #991b1b; }
+        .btn-join-blue { background: linear-gradient(180deg, #3b82f6, #1d4ed8); box-shadow: 0 5px 0 #1e40af; }
 
-const questionsRound2 = [ // 8v8
-    { q: "11. ท่าทางการนั่งวัดความดันโลหิตที่ถูกต้องคือข้อใด?", choices: ["นั่งไขว่ห้างและเกร็งตัว", "นั่งหลังตรงและวางแขนให้อยู่ระดับหัวใจ"], answer: 1 },
-    { q: "12. ภาวะน้ำหนักเกินหรืออ้วนส่งผลอย่างไรต่อความดันโลหิต?", choices: ["ทำให้ความดันโลหิตมีแนวโน้มสูงขึ้น", "ช่วยให้ความดันโลหิตลดลงสู่เกณฑ์ปกติ"], answer: 0 },
-    { q: "13. การนอนหลับพักผ่อนไม่เพียงพอส่งผลอย่างไรต่อร่างกาย?", choices: ["อาจทำให้ความดันโลหิตสูงขึ้นได้", "ทำให้ความดันโลหิตคงที่ตลอดวัน"], answer: 0 },
-    { q: "14. ความเครียดสะสมส่งผลต่อระบบหลอดเลือดอย่างไร?", choices: ["ทำให้หลอดเลือดหดตัวและความดันสูงขึ้น", "ทำให้หลอดเลือดขยายตัวและความดันลดลง"], answer: 0 },
-    { q: "15. หากวัดความดันโลหิตได้ค่า 155/95 มม.ปรอท แปลผลได้อย่างไร?", choices: ["ความดันโลหิตปกติ", "ความดันโลหิตสูง"], answer: 1 },
-    { q: "16. สารอาหารชนิดใดในผักผลไม้ที่ช่วยขับโซเดียมและควบคุมความดัน?", choices: ["โพแทสเซียม", "คอเลสเตอรอล"], answer: 0 },
-    { q: "17. คำภาษาอังกฤษที่ใช้เรียก 'โรคความดันโลหิตสูง' คือข้อใด?", choices: ["Diabetes", "Hypertension"], answer: 1 },
-    { q: "18. การวัดความดันโลหิตเองที่บ้านมีประโยชน์อย่างไร?", choices: ["ช่วยติดตามค่าความดันจริงในชีวิตประจำวัน", "ใช้ทดแทนการกินยาตามที่แพทย์สั่งได้"], answer: 0 },
-    { q: "19. เมื่ออายุมากขึ้น ความยืดหยุ่นของหลอดเลือดลดลง จะส่งผลอย่างไร?", choices: ["เพิ่มความเสี่ยงต่อการเกิดโรคความดันโลหิตสูง", "ทำให้ความดันโลหิตลดต่ำลงเรื่อยๆ"], answer: 0 },
-    { q: "20. การดื่มเครื่องดื่มแอลกอฮอล์ปริมาณมากส่งผลอย่างไรต่อความดันโลหิต?", choices: ["ส่งผลให้ความดันโลหิตสูงขึ้น", "ช่วยให้หลอดเลือดแข็งแรงและดันโลหิตต่ำลง"], answer: 0 }
-];
+        .quiz-overlay { position: absolute; bottom: 15px; left: 12px; right: 12px; background: rgba(15, 23, 42, 0.95); border: 2px solid #38bdf8; border-radius: 20px; padding: 15px; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        .q-title { font-size: 1.1em; font-weight: bold; margin-bottom: 12px; text-align: center; color: #fff; }
+        .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .btn-choice { background: #1e293b; border: 2px solid #475569; color: white; padding: 14px 8px; font-size: 1em; font-family: 'Kanit'; font-weight: bold; border-radius: 12px; }
+        .btn-choice.selected { background: #facc15; color: #000; border-color: #fff; }
 
-const questionsRound3 = [ // 4v4
-    { q: "ข้อ 1. ค่าความดันโลหิต 'ตัวล่าง' (Diastolic) แสดงถึงแรงดันเลือดในภาวะใด?", choices: ["ขณะหัวใจบีบตัว", "ขณะหัวใจคลายตัว"], answer: 1 },
-    { q: "ข้อ 2. ยาประหยัดโซเดียมหรือผงชูรสผงนัว มีส่วนประกอบของอะไรที่ทำให้ความดันสูงขึ้น?", choices: ["โซเดียม (Sodium)", "โพแทสเซียม (Potassium)"], answer: 0 },
-    { q: "ข้อ 3. 'ภาวะความดันโลหิตสูงแอบแฝง' (White Coat Hypertension) คืออาการอย่างไร?", choices: ["ความดันสูงเฉพาะเวลาเจอหมอ/วัดที่โรงพยาบาล", "ความดันสูงเฉพาะช่วงเวลาตื่นนอนตอนเช้า"], answer: 0 },
-    { q: "ข้อ 4. การสูบบุหรี่ส่งผลอย่างไรต่อหลอดเลือดในผู้ป่วยความดันโลหิตสูง?", choices: ["ทำให้หลอดเลือดหดตัวและตีบเกร็งทันที", "ทำให้หลอดเลือดขยายตัวมากเกินไปจนอักเสบ"], answer: 0 },
-    { q: "ข้อ 5. อวัยวะใดที่มีหน้าที่กรองของเสียและมักได้รับความเสียหายอย่างหนักจากโรคความดันสูงเรื้อรัง?", choices: ["ตับ", "ไต"], answer: 1 },
-    { q: "ข้อ 6. เครื่องดื่มแอลกอฮอล์ส่งผลต่อระดับความดันโลหิตอย่างไร?", choices: ["หากดื่มปริมาณมากเป็นประจำจะทำให้ความดันพุ่งสูงขึ้น", "ช่วยขยายหลอดเลือดและทำให้ความดันลดลงอย่างยั่งยืน"], answer: 0 },
-    { q: "ข้อ 7. ผู้ที่มีภาวะหยุดหายใจขณะหลับจากการอุดกั้น (Snoring/Sleep Apnea) มีความเสี่ยงต่อความดันโลหิตสูงหรือไม่?", choices: ["มีความเสี่ยงสูง เพราะร่างกายขาดออกซิเจนเป็นช่วงๆ ทำให้ความดันพุ่งสูงตอนกลางคืน", "ไม่มีความเสี่ยง เพราะความดันจะลดลงเสมอขณะนอนหลับ"], answer: 0 },
-    { q: "ข้อ 8. ปริมาณโซเดียมที่องค์การอนามัยโลก (WHO) แนะนำให้บริโภคไม่เกินต่อวันคือเท่าใด?", choices: ["ไม่เกิน 2,000 มิลลิกรัม (เกลือประมาณ 1 ช้อนชา)", "ไม่เกิน 5,000 มิลลิกรัม (เกลือประมาณ 1 ช้อนโต๊ะ)"], answer: 0 },
-    { q: "ข้อ 9. แร่ธาตุชนิดใดในอาหาร (เช่น บานาน่า/ผักใบเขียว) ที่ช่วยขับโซเดียมและลดความดันโลหิตได้ดี?", choices: ["แคลเซียม", "โพแทสเซียม"], answer: 1 },
-    { q: "ข้อ 10. ก่อนทำการวัดความดันโลหิต ไม่ควรกินกาแฟหรือดื่มชาล่วงหน้ากี่นาที?", choices: ["อย่างน้อย 30 นาที", "ไม่ต้องเว้นระยะ สามารถดื่มแล้ววัดได้ทันที"], answer: 0 }
-];
+        .stage-viewport { position: absolute; inset: 0; background: #4d9e00; overflow: hidden; z-index: 10; }
+        .world-camera { position: absolute; inset: 0; transform-origin: center center; will-change: transform; }
 
-const questionsRound4 = [ // 2v2
-    { q: "ข้อ 11. ขณะทำการวัดความดันโลหิต ตำแหน่งของแขนและปลอกแขน (Cuff) ควรอยู่ที่ระดับใด?", choices: ["ระดับเดียวกับหัวใจ", "วางต่ำกว่าระดับหัวใจลงไปที่หน้าตัก"], answer: 0 },
-    { q: "ข้อ 12. หากวัดความดันโลหิตได้ค่า 140/90 mmHg ถือว่าอยู่ในเกณฑ์ใด?", choices: ["ความดันโลหิตสูง (Stage 1)", "ความดันโลหิตปกติสมบูรณ์แบบ"], answer: 0 },
-    { q: "ข้อ 13. อาหารรูปแบบ DASH Diet (Dietary Approaches to Stop Hypertension) เน้นทานอะไรเป็นหลัก?", choices: ["ผัก ผลไม้ ธัญพืช ถั่ว และเนื้อสัตว์ไขมันต่ำ", "เน้นทานแป้งขัดขาว ผัดน้ำมันทอด และเนื้อสัตว์ติดมัน"], answer: 0 },
-    { q: "ข้อ 14. โรคความดันโลหิตสูงส่วนใหญ่ (มากกว่า 90%) เป็นประเภทใด?", choices: ["ไม่ทราบสาเหตุแน่ชัด (Primary/Essential Hypertension)", "มีสาเหตุมาจากเนื้องอกในสมองโดยตรง"], answer: 0 },
-    { q: "ข้อ 15. ภาวะน้ำหนักตัวเกินหรืออ้วน ส่งผลต่อความดันโลหิตอย่างไร?", choices: ["ทำให้หัวใจต้องสูบฉีดเลือดไปเลี้ยงร่างกายมากขึ้น ความดันจึงสูงขึ้น", "ช่วยให้หลอดเลือดขยายตัวได้กว้างขึ้น ทำให้ความดันลดลง"], answer: 0 },
-    { q: "ข้อ 16. การนอนหลับพักผ่อนไม่เพียงพอ (น้อยกว่า 6 ชั่วโมงต่อคืน) ส่งผลต่อความดันอย่างไร?", choices: ["กระตุ้นระบบประสาทซิมพาเทติก ทำให้ความดันและหัวใจทำงานหนักขึ้น", "ช่วยให้หลอดเลือดได้คลายตัว ความดันจึงต่ำลง"], answer: 0 },
-    { q: "ข้อ 17. ผู้ป่วยความดันสูงที่ทานยาลดความดันเป็นประจำ สามารถซื้อยามโนราห์/ยาแก้ปวดกลุ่ม NSAIDs (เช่น ไอบูโพรเฟน) ทานเองได้หรือไม่?", choices: ["ควรระวังและปรึกษาเภสัชกร เพราะยาแก้ปวดกลุ่มนี้อาจทำให้ความดันสูงขึ้นและต้านฤทธิ์ยาลดความดัน", "ทานได้เสรี เพราะยาแก้ปวดไม่มีผลต่อระบบหลอดเลือดและหัวใจ"], answer: 0 },
-    { q: "ข้อ 18. เส้นประสาทตาและจอตา (Retina) สามารถได้รับความเสียหายจากโรคความดันโลหิตสูงได้หรือไม่?", choices: ["ได้ อาจเกิดภาวะจอประสาทตาเสื่อมจากความดันสูง (Hypertensive Retinopathy)", "ไม่ได้ ดวงตาเป็นอวัยวะที่ไม่เกี่ยวกับแรงดันเลือด"], answer: 0 },
-    { q: "ข้อ 19. ในผู้สูงอายุ มักพบภาวะความดันโลหิตสูงชนิดใดบ่อยที่สุด?", choices: ["ความดันตัวบนสูงอย่างเดียว (Isolated Systolic Hypertension)", "ความดันตัวล่างสูงอย่างเดียว"], answer: 0 },
-    { q: "ข้อ 20. ข้อใดคือความเข้าใจผิดที่อันตรายที่สุดเกี่ยวกับโรคความดันโลหิตสูง?", choices: ["\"ถ้าไม่มีอาการปวดหัว มึนหัว แสดงว่าความดันปกติ ไม่จำเป็นต้องกินยา\"", "\"ต้องวัดความดันเป็นประจำแม้วันที่รู้สึกสบายดี\""], answer: 0 }
-];
+        .grass-top { position: absolute; top: 0; left: -300vw; right: -300vw; height: 22vh; background: #4d9e00; border-bottom: 5px solid #3b7a00; }
+        .grass-bottom { position: absolute; bottom: 0; left: -300vw; right: -300vw; height: 22vh; background: #4d9e00; border-top: 5px solid #3b7a00; }
+        .dirt-path { position: absolute; top: 22vh; bottom: 22vh; left: -300vw; right: -300vw; background: #8b4513; border-top: 5px solid #5c2e0b; border-bottom: 5px solid #5c2e0b; }
+        .center-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: #fff; transform: translateX(-50%); border-left: 2px dashed #dc2626; z-index: 4; }
 
-const questionsRound5Raw = [ // 1v1 (สุ่มสลับคำตอบ)
-    { q: "1. คนเป็นโรคความดันโลหิตสูง ถ้าอาการกำเริบต้องรีบไปที่ไหน?", correct: "โรงพยาบาล", wrong: "วัด" },
-    { q: "2. ทำไมหมอถึงบอกว่าความดันโลหิตสูงเปรียบเหมือน 'ความรัก'?", correct: "เพราะไม่มีสัญญาณเตือนล่วงหน้า", wrong: "เพราะยิ่งใกล้ ยิ่งใจสั่น" },
-    { q: "3. ยารักษาความดันโลหิต ยี่ห้อไหนกินแล้วความดันลดไวที่สุด?", correct: "ยาตามสั่งแพทย์", wrong: "ยา 3 ชั้น" },
-    { q: "4. กิจกรรมใดอาจส่งผลให้เกิดความดันสูง", correct: "กินของเค็มเยอะ", wrong: "ดันพื้น" },
-    { q: "5. พฤติกรรมแบบไหนที่ช่วยให้ความดัน 'ลดลง' ได้รวดเร็วที่สุด?", correct: "กินยาลดความดัน", wrong: "ผลักความดันออกไป" },
-    { q: "6. ถ้าอยากรู้ว่าตัวเองความดันสูงไหม ต้องไปคุยกับใคร?", correct: "หมอ", wrong: "ช่างไฟ" },
-    { q: "7. ค่าความดันโลหิตตัวไหนที่อันตรายที่สุด?", correct: "ตัวบนสูงเกินไป", wrong: "ตัวที่อยู่ข้างหลังเรา" },
-    { q: "8. เครื่องมือชนิดไหนที่คนเป็นความดันกลัวมากที่สุด?", correct: "เครื่องวัดความดัน", wrong: "แม่แรงยกรถ" },
-    { q: "9. ทำไมเวลาเครียด ความดันถึงพุ่งสูงขึ้น?", correct: "เส้นเลือดหดตัว", wrong: "เพราะความรักทำให้คนตาบอด" },
-    { q: "10. ทำไมคนเป็นความดันโลหิตสูงไม่ควรออกกำลังกายหนัก ?", correct: "เพราะจะทำให้ความดันพุ่งสูง", wrong: "เพราะมันเหนื่อย" }
-];
+        .rope-slider { position: absolute; left: 0; right: 0; top: 50%; height: 100px; transform: translateY(-50%); z-index: 5; will-change: transform; }
+        .rope-texture { position: absolute; left: -300vw; right: -300vw; top: 50%; height: 16px; transform: translateY(-50%); background: repeating-linear-gradient(45deg, #d4a373, #d4a373 8px, #a8794d 8px, #a8794d 16px); box-shadow: 0 6px 12px rgba(0,0,0,0.5); z-index: 5; }
+        .knot { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 34px; height: 34px; background: #dc2626; border-radius: 6px; border: 3px solid #fff; z-index: 6; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
 
-function getRandomQuestion(roundNumber) {
-    if (roundNumber === 1) return questionsRound1[Math.floor(Math.random() * questionsRound1.length)];
-    if (roundNumber === 2) return questionsRound2[Math.floor(Math.random() * questionsRound2.length)];
-    if (roundNumber === 3) return questionsRound3[Math.floor(Math.random() * questionsRound3.length)];
-    if (roundNumber === 4) return questionsRound4[Math.floor(Math.random() * questionsRound4.length)];
+        @keyframes rope-vibrate {
+            0% { transform: translateY(-50%) translateX(0); }
+            25% { transform: translateY(calc(-50% - 2px)) translateX(2px); }
+            50% { transform: translateY(calc(-50% + 2px)) translateX(-2px); }
+            75% { transform: translateY(calc(-50% - 2px)) translateX(1px); }
+            100% { transform: translateY(-50%) translateX(0); }
+        }
+        .rope-slider.tension { animation: rope-vibrate 0.1s infinite; }
 
-    // รอบ 5 ขึ้นไป (1v1): สุ่มสลับตำแหน่ง ก กับ ข
-    const raw = questionsRound5Raw[Math.floor(Math.random() * questionsRound5Raw.length)];
-    const isCorrectFirst = Math.random() < 0.5;
-    return {
-        q: raw.q,
-        choices: isCorrectFirst ? [raw.correct, raw.wrong] : [raw.wrong, raw.correct],
-        answer: isCorrectFirst ? 0 : 1
-    };
-}
+        .player-top-down { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; transition: left 0.3s ease; }
+        .player-head { width: 44px; height: 44px; border-radius: 50%; border: 3px solid #111; box-shadow: 0 6px 10px rgba(0,0,0,0.5); background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.4), transparent); position: relative; z-index: 10; }
+        .red-team .player-head { background-color: #ef4444; } .blue-team .player-head { background-color: #3b82f6; }
 
-function getTargetCapacity(roundNumber) {
-    if (roundNumber === 1) return 16;
-    if (roundNumber === 2) return 8;
-    if (roundNumber === 3) return 4;
-    if (roundNumber === 4) return 2;
-    return 1; // 1v1
-}
+        .player-arms { position: absolute; width: 100%; height: 100%; z-index: 8; }
+        .arm { position: absolute; width: 26px; height: 5px; background: #111; border-radius: 3px; box-shadow: 0 3px 5px rgba(0,0,0,0.6); }
+        
+        .pos-top { top: calc(50% - 40px); } 
+        .pos-bottom { top: calc(50% + 5px); }
 
-function generateRoomCode() {
-    let code;
-    do { code = Math.floor(100000 + Math.random() * 900000).toString(); } while (rooms[code]);
-    return code;
-}
+        .pos-top .arm.left-arm { top: 22px; left: -8px; transform: rotate(55deg); }
+        .pos-top .arm.right-arm { top: 22px; right: -8px; transform: rotate(125deg); }
+        .pos-bottom .arm.left-arm { bottom: 22px; left: -8px; transform: rotate(-55deg); }
+        .pos-bottom .arm.right-arm { bottom: 22px; right: -8px; transform: rotate(-125deg); }
 
-io.on('connection', (socket) => {
-    socket.on('create_room', () => {
-        const roomCode = generateRoomCode();
-        rooms[roomCode] = { hostId: socket.id, players: {}, state: 'waiting', ropePosition: 50, botCount: 0, roundNumber: 1 };
-        socket.join(roomCode);
-        socket.emit('room_created', { roomCode });
-    });
+        @keyframes float-name { 0% { transform: translateY(0); } 100% { transform: translateY(-5px); } }
+        .player-name { position: absolute; background: rgba(0,0,0,0.85); padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; white-space: nowrap; border: 1px solid rgba(255,255,255,0.2); color: white; animation: float-name 1s infinite alternate ease-in-out; z-index: 15; }
+        .pos-top .player-name { top: -26px; } .pos-bottom .player-name { bottom: -26px; }
 
-    socket.on('join_room', ({ roomCode, name, team }) => {
-        const room = rooms[roomCode];
-        if (!room || room.state !== 'waiting') return socket.emit('join_error', 'ไม่สามารถเข้าร่วมได้ในขณะนี้!');
+        @keyframes pull-red { 0% { transform: translateX(0) rotate(0deg); } 50% { transform: translateX(-20px) rotate(-18deg); } 100% { transform: translateX(0) rotate(0deg); } }
+        @keyframes pull-blue { 0% { transform: translateX(0) rotate(0deg); } 50% { transform: translateX(20px) rotate(18deg); } 100% { transform: translateX(0) rotate(0deg); } }
+        .pulling.red-team { animation: pull-red 0.3s ease; } .pulling.blue-team { animation: pull-blue 0.3s ease; }
 
-        const maxPerTeam = getTargetCapacity(room.roundNumber);
-        const teamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
-        if (teamPlayers.length >= maxPerTeam) return socket.emit('join_error', `ทีมเต็มแล้ว! (รับสูงสุด ${maxPerTeam} คน)`);
+        .is-me .player-head { border: 3px solid #facc15 !important; box-shadow: 0 0 15px #facc15, 0 6px 10px rgba(0,0,0,0.5) !important; }
+        .you-badge { position: absolute; background: #facc15; color: #000; font-size: 10px; font-weight: 900; padding: 1px 6px; border-radius: 8px; z-index: 20; border: 1px solid #000; animation: float-name 1s infinite alternate ease-in-out;}
+        .pos-top .you-badge { top: -42px; } .pos-bottom .you-badge { bottom: -42px; }
 
-        let freeSlot = 0;
-        while (teamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
+        .modal-overlay { position: fixed; inset: 0; background: rgba(11,15,25,0.92); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; z-index: 200; text-align: center; }
+        .card { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 24px; padding: 25px; width: 100%; max-width: 420px; }
+        input { width: 100%; padding: 14px; font-size: 1.1em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; border: 2px solid #38bdf8; background: rgba(0,0,0,0.5); color: #fff; margin-bottom: 12px; text-align: center; outline: none; }
+    </style>
+</head>
+<body>
 
-        room.players[socket.id] = { id: socket.id, name: name.trim() || 'Player', team, slot: freeSlot, status: 'active', isBot: false };
-        socket.join(roomCode);
-        socket.emit('join_success', { name: room.players[socket.id].name, team, slot: freeSlot, roomCode });
-        updateLobby(roomCode);
-    });
+    <div class="ui-layer" id="ui-layer">
+        <div class="top-bar ui-content">
+            <div class="pin-pill" id="display-pin">PIN: ------</div>
+            <div class="timer-pill" id="timer">60</div>
+        </div>
+        <div class="waiting-badge ui-content" id="wait-status" style="display:none;">⏳ รอ Host กดเริ่ม...</div>
 
-    socket.on('switch_team_direct', ({ roomCode, targetTeam }) => {
-        const room = rooms[roomCode];
-        if (!room || room.state !== 'waiting') return;
-        const player = room.players[socket.id];
-        if (!player || player.team === targetTeam) return;
+        <div class="bottom-join-bar ui-content" id="bottom-join-bar" style="display:none;">
+            <button class="btn-join-team btn-join-red" onclick="switchTeamDirect('RED')">🔴 ร่วม RED</button>
+            <button class="btn-join-team btn-join-blue" onclick="switchTeamDirect('BLUE')">🔵 ร่วม BLUE</button>
+        </div>
 
-        const maxPerTeam = getTargetCapacity(room.roundNumber);
-        const targetTeamPlayers = Object.values(room.players).filter(p => p.team === targetTeam && p.status === 'active');
-        if (targetTeamPlayers.length >= maxPerTeam) return socket.emit('join_error', `ทีมเต็ม!`);
+        <div class="quiz-overlay ui-content" id="quiz-overlay">
+            <div class="q-title" id="q-text">กำลังโหลดคำถาม...</div>
+            <div class="grid-choices">
+                <button class="btn-choice" id="c0" onclick="sendAns(0)">ก</button>
+                <button class="btn-choice" id="c1" onclick="sendAns(1)">ข</button>
+                <button class="btn-choice" id="c2" onclick="sendAns(2)" style="display:none;">ค</button>
+                <button class="btn-choice" id="c3" onclick="sendAns(3)" style="display:none;">ง</button>
+            </div>
+        </div>
+    </div>
 
-        let freeSlot = 0;
-        while (targetTeamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
+    <div class="stage-viewport">
+        <div class="world-camera" id="world-camera">
+            <div class="grass-top"></div>
+            <div class="dirt-path"></div>
+            <div class="grass-bottom"></div>
+            <div class="center-line"></div>
 
-        player.team = targetTeam; player.slot = freeSlot;
-        socket.emit('team_switched', { team: targetTeam, slot: freeSlot });
-        updateLobby(roomCode);
-    });
+            <div class="rope-slider" id="rope-slider">
+                <div class="rope-texture"></div>
+                <div class="knot"></div>
+                <div id="players-container"></div>
+            </div>
+        </div>
+    </div>
 
-    socket.on('rejoin_team', ({ roomCode, team }) => {
-        const room = rooms[roomCode];
-        if (!room || room.state !== 'waiting') return;
-        const player = room.players[socket.id];
-        if (!player || player.status !== 'survived') return;
+    <div class="modal-overlay" id="join-modal">
+        <div class="card">
+            <h2 style="color:#38bdf8; margin-bottom:15px;" id="modal-title">🎮 สมรภูมิดึงเชือก</h2>
+            <input type="number" id="pin-input" placeholder="PIN 6 หลัก" maxlength="6">
+            <input type="text" id="name-input" placeholder="ชื่อตัวละคร..." maxlength="12">
+            <div style="display:flex; gap:10px;">
+                <button class="btn-join-team btn-join-red" onclick="submitJoin('RED')">🔴 RED</button>
+                <button class="btn-join-team btn-join-blue" onclick="submitJoin('BLUE')">🔵 BLUE</button>
+            </div>
+        </div>
+    </div>
 
-        let freeSlot = 0;
-        while (Object.values(room.players).filter(p => p.team === team && p.status === 'active').map(p => p.slot).includes(freeSlot)) freeSlot++;
+    <div class="modal-overlay" id="eliminated-modal" style="display:none;">
+        <div class="card"><h1 style="font-size:4em;">💀</h1><h2 style="color:#ef4444;">ตกรอบ!</h2><p>ขอบคุณที่ร่วมสนุก</p></div>
+    </div>
 
-        player.team = team; player.slot = freeSlot; player.status = 'active';
-        socket.emit('join_success', { name: player.name, team, slot: freeSlot, roomCode });
-        updateLobby(roomCode);
-    });
+    <div class="modal-overlay" id="champion-modal" style="display:none;">
+        <div class="card" style="border-color:#facc15;"><h1 style="font-size:5em;">🏆</h1><h2 style="color:#facc15;">CHAMPION</h2><p>ผู้รอดชีวิตคนสุดท้าย!</p></div>
+    </div>
 
-    socket.on('add_bot', ({ roomCode, team }) => {
-        const room = rooms[roomCode];
-        if (!room || room.hostId !== socket.id || room.state !== 'waiting') return;
-        const maxPerTeam = getTargetCapacity(room.roundNumber);
-        const teamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
-        if (teamPlayers.length >= maxPerTeam) return;
+    <script>
+        const socket = io();
+        let currentRoomCode = '';
+        let mySocketId = '';
+        let isRejoining = false;
 
-        let freeSlot = 0;
-        while (teamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
+        let targetCameraX = 0;
+        let currentCameraX = 0;
+        let targetCameraScale = 1.1; 
+        let currentCameraScale = 1.1;
+        let myBaseOffsetPx = 0;
+        let currentRopeShiftPx = 0;
+        let isTrackingMe = false;
 
-        room.botCount++;
-        const botId = `bot_${Date.now()}_${room.botCount}`;
-        room.players[botId] = { id: botId, name: `🤖 บอท ${room.botCount}`, team, slot: freeSlot, status: 'active', isBot: true };
-        updateLobby(roomCode);
-    });
+        socket.on('connect', () => { mySocketId = socket.id; });
 
-    socket.on('start_match', ({ roomCode }) => {
-        const room = rooms[roomCode];
-        if (!room || room.hostId !== socket.id) return;
+        function renderCameraLoop() {
+            currentCameraX += (targetCameraX - currentCameraX) * 0.08;
+            currentCameraScale += (targetCameraScale - currentCameraScale) * 0.05;
 
-        // --- ระบบเติมบอทอัตโนมัติให้ครบทั้งสองทีมก่อนเริ่มเกม ---
-        const maxPerTeam = getTargetCapacity(room.roundNumber);
-        ['RED', 'BLUE'].forEach(team => {
-            let activeTeamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
-            while (activeTeamPlayers.length < maxPerTeam) {
-                let freeSlot = 0;
-                const activeSlots = activeTeamPlayers.map(p => p.slot);
-                while (activeSlots.includes(freeSlot)) freeSlot++;
+            document.getElementById('world-camera').style.transform = `scale(${currentCameraScale}) translateX(${currentCameraX}px)`;
+            requestAnimationFrame(renderCameraLoop);
+        }
+        requestAnimationFrame(renderCameraLoop);
 
-                room.botCount++;
-                const botId = `bot_${Date.now()}_${room.botCount}_${Math.random()}`;
-                const newBot = { id: botId, name: `🤖 บอท ${room.botCount}`, team, slot: freeSlot, status: 'active', isBot: true };
-                room.players[botId] = newBot;
-                activeTeamPlayers.push(newBot);
-            }
-        });
-        updateLobby(roomCode);
-
-        room.state = 'playing'; room.ropePosition = 50;
-        io.to(roomCode).emit('match_started');
-
-        // ส่งคำถามและบันทึกคำถามไว้ประจำตัวผู้เล่น
-        for (let pId in room.players) {
-            if (!room.players[pId].isBot && room.players[pId].status === 'active') {
-                const qObj = getRandomQuestion(room.roundNumber);
-                room.players[pId].currentQuestion = qObj;
-                io.to(pId).emit('new_question', qObj);
+        function submitJoin(team) {
+            if (isRejoining) { socket.emit('rejoin_team', { roomCode: currentRoomCode, team }); } 
+            else {
+                const pin = document.getElementById('pin-input').value;
+                const name = document.getElementById('name-input').value;
+                if (!pin || !name.trim()) return alert('กรอกข้อมูลให้ครบ!');
+                currentRoomCode = pin;
+                socket.emit('join_room', { roomCode: pin, name, team });
             }
         }
+        function switchTeamDirect(targetTeam) { if(currentRoomCode) socket.emit('switch_team_direct', { roomCode: currentRoomCode, targetTeam }); }
 
-        room.botInterval = setInterval(() => {
-            if (room.state !== 'playing') return;
-            let redForce = 0, blueForce = 0;
+        socket.on('join_error', msg => alert(msg));
+        socket.on('join_success', (data) => {
+            currentRoomCode = data.roomCode;
+            document.getElementById('join-modal').style.display = 'none';
+            document.getElementById('display-pin').innerText = `PIN: ${currentRoomCode}`;
+            document.getElementById('wait-status').style.display = 'block';
+            document.getElementById('bottom-join-bar').style.display = 'flex';
+        });
 
-            Object.values(room.players).forEach(p => {
-                if (p.isBot && p.status === 'active' && Math.random() > 0.45) {
-                    p.team === 'RED' ? redForce += 1.8 : blueForce += 1.8;
+        socket.on('update_lobby', (data) => {
+            const container = document.getElementById('players-container');
+            container.innerHTML = '';
+            let meFound = false;
+
+            data.players.forEach(p => {
+                const isMe = (p.id === socket.id || p.id === mySocketId);
+                const isTop = (p.slot % 2 === 0);
+                const offsetPx = 220 + (p.slot * 80);
+                
+                const charDiv = document.createElement('div');
+                charDiv.className = `player-top-down ${p.team === 'RED' ? 'red-team' : 'blue-team'} ${isTop ? 'pos-top' : 'pos-bottom'} ${isMe ? 'is-me' : ''}`;
+                charDiv.id = `player-${p.id}`;
+
+                if (p.team === 'RED') charDiv.style.left = `calc(50% - ${offsetPx}px)`;
+                else charDiv.style.left = `calc(50% + ${offsetPx}px)`;
+
+                charDiv.innerHTML = `
+                    ${isMe ? '<div class="you-badge">YOU</div>' : ''}
+                    <div class="player-name">${p.name}</div>
+                    <div class="player-arms"><div class="arm left-arm"></div><div class="arm right-arm"></div></div>
+                    <div class="player-head"></div>
+                `;
+                container.appendChild(charDiv);
+
+                if (isMe) {
+                    meFound = true;
+                    myBaseOffsetPx = (p.team === 'RED') ? -offsetPx : offsetPx;
+                    isTrackingMe = true;
+                    if(document.getElementById('quiz-overlay').style.display !== 'block') {
+                        targetCameraX = -myBaseOffsetPx; 
+                    }
                 }
             });
 
-            if (redForce > 0 || blueForce > 0) {
-                room.ropePosition -= (redForce - blueForce);
-                if (room.ropePosition < 5) room.ropePosition = 5;
-                if (room.ropePosition > 95) room.ropePosition = 95;
-                io.to(roomCode).emit('update_rope', { ropePosition: room.ropePosition });
+            if(!meFound) isTrackingMe = false;
+        });
+
+        socket.on('match_started', () => {
+            document.getElementById('wait-status').style.display = 'none';
+            document.getElementById('bottom-join-bar').style.display = 'none';
+            document.getElementById('quiz-overlay').style.display = 'block';
+            targetCameraScale = 0.65;
+        });
+
+        socket.on('timer_tick', (t) => document.getElementById('timer').innerText = t < 10 ? `0${t}` : t);
+
+        socket.on('new_question', (qData) => {
+            document.getElementById('q-text').innerText = qData.q;
+            const choicesCount = qData.choices.length;
+            for (let i = 0; i < 4; i++) {
+                const btn = document.getElementById(`c${i}`);
+                if (i < choicesCount) {
+                    btn.innerText = qData.choices[i];
+                    btn.style.display = 'block';
+                    btn.disabled = false;
+                    btn.className = 'btn-choice';
+                } else {
+                    btn.style.display = 'none';
+                }
             }
-        }, 1500);
+        });
 
-        let timeLeft = ROUND_TIME;
-        clearInterval(room.timerInterval);
-        room.timerInterval = setInterval(() => {
-            timeLeft--;
-            io.to(roomCode).emit('timer_tick', timeLeft);
-            if (timeLeft <= 0) {
-                clearInterval(room.timerInterval); clearInterval(room.botInterval);
-                endRound(roomCode);
-            }
-        }, 1000);
-    });
-
-    socket.on('submit_answer', ({ roomCode, answerIndex }) => {
-        const room = rooms[roomCode];
-        if (!room || room.state !== 'playing') return;
-
-        const player = room.players[socket.id];
-        if (!player || player.status !== 'active' || !player.currentQuestion) return;
-
-        const isCorrect = (answerIndex === player.currentQuestion.answer);
-        let power = isCorrect ? 3.5 : 0;
-
-        if (isCorrect) {
-            player.team === 'RED' ? room.ropePosition -= power : room.ropePosition += power;
-            if (room.ropePosition < 5) room.ropePosition = 5;
-            if (room.ropePosition > 95) room.ropePosition = 95;
+        function sendAns(idx) {
+            socket.emit('submit_answer', { roomCode: currentRoomCode, answerIndex: idx });
+            for (let i = 0; i < 4; i++) document.getElementById(`c${i}`).disabled = true;
+            document.getElementById(`c${idx}`).classList.add('selected');
         }
 
-        socket.emit('answer_result', { isCorrect, power });
-        io.to(roomCode).emit('update_rope', { ropePosition: room.ropePosition, lastPuller: { id: player.id, name: player.name, team: player.team } });
+        socket.on('update_rope', (data) => {
+            currentRopeShiftPx = (data.ropePosition - 50) * 15;
+            const ropeEl = document.getElementById('rope-slider');
+            ropeEl.style.transform = `translateY(-50%) translateX(${currentRopeShiftPx}px)`;
 
-        setTimeout(() => {
-            if (room.state === 'playing' && player.status === 'active') {
-                const nextQ = getRandomQuestion(room.roundNumber);
-                player.currentQuestion = nextQ;
-                socket.emit('new_question', nextQ);
+            if (isTrackingMe) {
+                targetCameraX = -(myBaseOffsetPx + currentRopeShiftPx);
             }
-        }, 1000);
-    });
 
-    function endRound(roomCode) {
-        const room = rooms[roomCode];
-        if (!room) return;
+            ropeEl.classList.add('tension');
+            setTimeout(() => ropeEl.classList.remove('tension'), 200);
 
-        let winningTeam = room.ropePosition > 50 ? 'BLUE' : (room.ropePosition < 50 ? 'RED' : (Math.random() > 0.5 ? 'RED' : 'BLUE'));
-        let realSurvivors = [];
-
-        for (let pId in room.players) {
-            let p = room.players[pId];
-            if (p.isBot) { delete room.players[pId]; continue; }
-            if (p.team === winningTeam) {
-                p.status = 'survived'; p.team = null; realSurvivors.push(p);
-            } else {
-                p.status = 'eliminated'; io.to(pId).emit('eliminated');
+            if (data.lastPuller) {
+                const pEl = document.getElementById(`player-${data.lastPuller.id}`);
+                if (pEl) {
+                    pEl.classList.add('pulling');
+                    setTimeout(() => pEl.classList.remove('pulling'), 300);
+                }
             }
-        }
+        });
 
-        if (realSurvivors.length === 1) {
-            room.state = 'ended'; io.to(roomCode).emit('champion', { name: realSurvivors[0].name });
-        } else if (realSurvivors.length > 1) {
-            room.state = 'waiting'; room.roundNumber++;
-            realSurvivors.forEach(p => io.to(p.id).emit('pick_team_again'));
-            io.to(roomCode).emit('round_end', { winningTeam, survivors: realSurvivors.length, roundNumber: room.roundNumber });
-            updateLobby(roomCode);
-        } else {
-            room.state = 'ended'; io.to(roomCode).emit('game_over');
-        }
-    }
+        socket.on('pick_team_again', () => {
+            isRejoining = true;
+            document.getElementById('quiz-overlay').style.display = 'none';
+            document.getElementById('join-modal').style.display = 'flex';
+            document.getElementById('pin-input').style.display = 'none';
+            document.getElementById('name-input').style.display = 'none';
+            document.getElementById('modal-title').innerText = '🔥 คุณเข้ารอบ! เลือกลุยต่อ';
+            targetCameraScale = 1.1;
+        });
 
-    function updateLobby(roomCode) {
-        if (!rooms[roomCode]) return;
-        const activePlayers = Object.values(rooms[roomCode].players).filter(p => p.team !== null && p.status === 'active');
-        io.to(roomCode).emit('update_lobby', { players: activePlayers });
-    }
-
-    socket.on('disconnect', () => {
-        for (let code in rooms) {
-            if (rooms[code].players[socket.id]) {
-                delete rooms[code].players[socket.id];
-                updateLobby(code);
-            }
-        }
-    });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => console.log(`Server Live on Port ${PORT}`));
+        socket.on('eliminated', () => { document.getElementById('quiz-overlay').style.display = 'none'; document.getElementById('eliminated-modal').style.display = 'flex'; });
+        socket.on('champion', () => { document.getElementById('quiz-overlay').style.display = 'none'; document.getElementById('champion-modal').style.display = 'flex'; });
+    </script>
+</body>
+</html>
