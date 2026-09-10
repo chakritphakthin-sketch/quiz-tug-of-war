@@ -8,22 +8,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        /* บังคับ layout แนวตั้งเสมอแก้ปัญหาแท็บเล็ตแนวนอนเพี้ยน */
-        body { font-family: 'Kanit', sans-serif; background: #0f172a; color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; align-items: center; justify-content: center;}
+        body { font-family: 'Kanit', sans-serif; background: #0f172a; color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; align-items: center; justify-content: center; transition: background 0.3s ease;}
 
         .card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 25px; text-align: center; max-width: 450px; width: 90%; }
         input { width: 100%; padding: 16px; font-size: 1.2em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; border: 2px solid #38bdf8; background: rgba(0,0,0,0.4); color: #fff; margin-bottom: 15px; text-align: center; }
         .btn-3d { width: 100%; padding: 18px; font-size: 1.4em; font-family: 'Kanit'; font-weight: 900; border: none; border-radius: 16px; margin-bottom: 12px; color: white; cursor: pointer; }
-        .team-red { background: linear-gradient(180deg, #ff4d4d, #d10000); }
-        .team-blue { background: linear-gradient(180deg, #4da6ff, #0066cc); }
+        .team-red { background: linear-gradient(180deg, #ef4444, #991b1b); }
+        .team-blue { background: linear-gradient(180deg, #3b82f6, #1e3a8a); }
 
         #setup-container, #screen-reselect, #screen-eliminated, #screen-champion { display: none; width: 100%; justify-content: center; }
         #setup-container { display: flex; }
 
-        #game-container { display: none; flex-direction: column; height: 100vh; width: 100%; max-width: 800px; background: #0f172a; }
+        #game-container { display: none; flex-direction: column; height: 100vh; width: 100%; max-width: 800px; background: rgba(0,0,0,0.3); }
         
-        .mini-arena { flex: 0 0 30%; background: #1e1e38; position: relative; border-bottom: 3px solid #334155; display: flex; flex-direction: column; min-height: 180px; }
-        .arena-header { display: flex; justify-content: space-between; padding: 10px 15px; font-weight: bold; background: rgba(0,0,0,0.5); align-items: center;}
+        .mini-arena { flex: 0 0 30%; background: rgba(0,0,0,0.5); position: relative; border-bottom: 3px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; min-height: 180px; }
+        .arena-header { display: flex; justify-content: space-between; padding: 10px 15px; font-weight: bold; background: rgba(0,0,0,0.7); align-items: center;}
         
         .btn-leave { background: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 8px; font-family: 'Kanit'; font-weight: bold; cursor: pointer; }
 
@@ -32,11 +31,11 @@
         .rope-knot { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 35px; height: 35px; background: #facc15; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 10px #facc15; transition: left 0.2s linear; display: flex; justify-content: center; align-items: center; }
 
         .quiz-section { flex: 1; padding: 15px; display: flex; flex-direction: column; position: relative; }
-        .q-box { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 12px; font-size: 1.1em; font-weight: bold; margin-bottom: 12px; text-align: center; min-height: 70px; display: flex; align-items: center; justify-content: center; }
+        .q-box { background: rgba(255,255,255,0.15); padding: 15px; border-radius: 12px; font-size: 1.1em; font-weight: bold; margin-bottom: 12px; text-align: center; min-height: 70px; display: flex; align-items: center; justify-content: center; text-shadow: 1px 1px 2px #000; }
         .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; }
-        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 15px; font-size: 1.05em; font-weight: bold; border-radius: 12px; cursor: pointer; }
+        .choice-btn { background: rgba(30, 41, 59, 0.9); border: 2px solid rgba(255,255,255,0.2); color: white; padding: 15px; font-size: 1.05em; font-weight: bold; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
 
-        .floating-power { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5em; font-weight: 900; opacity: 0; pointer-events: none; z-index: 100; }
+        .floating-power { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5em; font-weight: 900; opacity: 0; pointer-events: none; z-index: 100; text-shadow: 2px 2px 5px #000; }
         @keyframes floatUp { 0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -20px) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -70px) scale(0.8); } }
     </style>
 </head>
@@ -54,11 +53,12 @@
     <div id="screen-reselect">
         <div class="card">
             <h2 style="color: #facc15; margin-bottom: 10px;">🎉 คุณผ่านเข้ารอบ!</h2>
-            <p style="margin-bottom: 20px; color: #94a3b8;" id="survivor-count-txt">รอการเลือกทีม...</p>
+            <p style="margin-bottom: 5px; color: #94a3b8;" id="survivor-count-txt">เหลือคนในห้องทั้งหมด: - คน</p>
+            <p style="margin-bottom: 20px; color: #38bdf8; font-weight:bold;" id="max-slot-txt">จำกัดทีมละ - คน</p>
             <button class="btn-3d team-red" id="re-btn-red" onclick="selectTeamNextRound('RED')">🔴 JOIN RED</button>
             <button class="btn-3d team-blue" id="re-btn-blue" onclick="selectTeamNextRound('BLUE')">🔵 JOIN BLUE</button>
-            <p id="reselect-status" style="margin-top:10px; color:#00ffcc; display:none;">✅ เลือกทีมแล้ว รอ Host เริ่มเกม!</p>
-            <button class="btn-leave" style="margin-top:20px; width:100%; padding: 15px;" onclick="leaveRoom()">🚪 ออกจากห้อง</button>
+            <p id="reselect-status" style="margin-top:10px; color:#00ffcc; display:none; font-weight:bold; font-size:1.2em;">✅ เลือกทีมแล้ว รอ Host เริ่มเกม!</p>
+            <button class="btn-leave" style="margin-top:20px; width:100%; padding: 15px;" onclick="leaveRoom()">🚪 ยอมแพ้ / ออกจากห้อง</button>
         </div>
     </div>
 
@@ -74,7 +74,7 @@
             <div class="rope-system"><div class="rope-line"><div class="rope-knot" id="mini-knot">⚡</div></div></div>
         </div>
         <div class="quiz-section">
-            <div id="round-status" style="text-align:center; color:#facc15;">เตรียมพร้อม...</div>
+            <div id="round-status" style="text-align:center; color:#facc15; text-shadow: 1px 1px 2px #000;">เตรียมพร้อม...</div>
             <div class="q-box" id="q-text">รอโจทย์...</div>
             <div class="grid-choices">
                 <button class="choice-btn" id="c0" onclick="sendAns(0)">-</button>
@@ -91,12 +91,19 @@
         let currentRoomCode = '';
         let currentQIndex = 0;
 
+        function setPlayerColor(team) {
+            if (team === 'RED') document.body.style.background = '#7f1d1d'; // Dark Red
+            else if (team === 'BLUE') document.body.style.background = '#1e3a8a'; // Dark Blue
+            else document.body.style.background = '#0f172a'; // Default Dark
+        }
+
         function hideAll() { 
             ['setup-container', 'game-container', 'screen-reselect', 'screen-eliminated', 'screen-champion'].forEach(id => {
                 document.getElementById(id).style.display = 'none';
             });
         }
-        function resetToSetup() { hideAll(); document.getElementById('setup-container').style.display = 'flex'; }
+        
+        function resetToSetup() { hideAll(); setPlayerColor(null); document.getElementById('setup-container').style.display = 'flex'; }
 
         function joinRoom(team) {
             const pin = document.getElementById('pin-input').value;
@@ -107,30 +114,37 @@
         }
 
         socket.on('join_error', (msg) => alert(msg));
-        socket.on('join_success', () => {
+        
+        socket.on('join_success', (data) => {
+            setPlayerColor(data.team);
             hideAll(); document.getElementById('game-container').style.display = 'flex';
             document.getElementById('q-text').innerText = '✅ อยู่ในห้องแล้วรอ Host เริ่ม...';
             disableButtons(true);
         });
 
-        // ถูกเตะออกจากห้อง
         socket.on('kicked', () => { alert("❌ คุณถูกเชิญออกจากห้อง"); resetToSetup(); });
 
-        // กดออกห้องเอง
         function leaveRoom() { 
             socket.emit('leave_room', { roomCode: currentRoomCode }); 
             resetToSetup(); 
         }
 
+        // เมื่อรอดชีวิตเข้ารอบ
         socket.on('survived_round', (data) => {
+            currentRoomCode = data.newRoomCode; // อัปเดตรหัสห้องใหม่เงียบๆ
+            setPlayerColor(null); // รีเซ็ตสีกลับเป็นปกติ
             hideAll(); document.getElementById('screen-reselect').style.display = 'flex';
             document.getElementById('survivor-count-txt').innerText = `เหลือคนในห้องทั้งหมด: ${data.remainingCount} คน`;
+            document.getElementById('max-slot-txt').innerText = `(จำกัดโควต้าทีมละไม่เกิน ${data.maxPerTeam} คน)`;
             document.getElementById('reselect-status').style.display = 'none';
             document.getElementById('re-btn-red').style.display = 'block'; document.getElementById('re-btn-blue').style.display = 'block';
         });
 
         function selectTeamNextRound(team) { socket.emit('select_team_next_round', { roomCode: currentRoomCode, team }); }
-        socket.on('team_selected_success', () => {
+        
+        // เลือกทีมใหม่สำเร็จ
+        socket.on('team_selected_success', (data) => {
+            setPlayerColor(data.team); // เปลี่ยนสีฉากหลัง
             document.getElementById('re-btn-red').style.display = 'none'; document.getElementById('re-btn-blue').style.display = 'none';
             document.getElementById('reselect-status').style.display = 'block';
         });
@@ -140,8 +154,8 @@
             currentQIndex = data.qIndex; loadQuestion(data.qData, data.qIndex, data.totalQuestions);
         });
 
-        socket.on('eliminated', () => { hideAll(); document.getElementById('screen-eliminated').style.display = 'flex'; });
-        socket.on('you_are_champion', () => { hideAll(); document.getElementById('screen-champion').style.display = 'flex'; });
+        socket.on('eliminated', () => { setPlayerColor(null); hideAll(); document.getElementById('screen-eliminated').style.display = 'flex'; });
+        socket.on('you_are_champion', () => { setPlayerColor(null); hideAll(); document.getElementById('screen-champion').style.display = 'flex'; });
 
         function loadQuestion(qData, qIndex, total) {
             document.getElementById('round-status').innerText = `ข้อที่ ${qIndex + 1} / ${total}`;
