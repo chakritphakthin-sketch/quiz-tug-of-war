@@ -1,217 +1,148 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const path = require('path');
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz Tug of War - Host Arena</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700;900&family=Orbitron:wght@900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Kanit', sans-serif; background: radial-gradient(circle at center top, #1e1e38, #0a0a14); color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+        #lock-screen { display: flex; align-items: center; justify-content: center; height: 100vh; }
+        #create-screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        .btn-create { padding: 20px 40px; font-size: 2em; font-family: 'Kanit'; font-weight: 900; background: linear-gradient(90deg, #10b981, #059669); color: white; border: none; border-radius: 20px; cursor: pointer; }
 
-app.use(express.static(path.join(__dirname, 'public')));
+        #arena-screen { display: none; flex-direction: column; height: 100vh; }
+        .header { background: rgba(0, 0, 0, 0.6); padding: 10px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(255,255,255,0.1); }
+        .pin-badge { font-family: 'Orbitron'; font-size: 2em; color: #facc15; background: rgba(250,204,21,0.1); padding: 5px 15px; border-radius: 12px; border: 2px solid #facc15; }
 
-const MATCH_DURATION = 100;
-const rooms = {}; 
+        .btn-start { padding: 10px 25px; font-size: 1.3em; font-weight: 900; background: linear-gradient(90deg, #00c6ff, #0072ff); color: white; border: none; border-radius: 12px; cursor: pointer; }
 
-const questions = [
-    { q: "กระแสไฟฟ้ามีหน่วยเป็นอะไร?", choices: ["Volt", "Ampere", "Ohm", "Watt"], answer: 1 },
-    { q: "เมืองหลวงของประเทศไทยคือ?", choices: ["เชียงใหม่", "ภูเก็ต", "กรุงเทพฯ", "พัทยา"], answer: 2 },
-    { q: "โลกหมุนรอบตัวเองใช้เวลาเท่าไร?", choices: ["12 ชั่วโมง", "24 ชั่วโมง", "30 วัน", "365 วัน"], answer: 1 },
-    { q: "ข้อใดคือสัตว์เลี้ยงลูกด้วยนม?", choices: ["ฉลาม", "จระเข้", "วาฬ", "เต่า"], answer: 2 },
-    { q: "น้ำประกอบด้วยธาตุอะไรบ้าง?", choices: ["H และ O", "C และ O", "N และ O", "H และ C"], answer: 0 },
-    { q: "ดาวเคราะห์ดวงใดใหญ่ที่สุดในระบบสุริยะ?", choices: ["โลก", "ดาวพฤหัสบดี", "ดาวเสาร์", "ดาวอังคาร"], answer: 1 }
-];
+        .timer-display { font-family: 'Orbitron'; font-size: 3em; color: #00ffcc; text-shadow: 0 0 20px #00ffcc; }
 
-function generateRoomCode() {
-    let code;
-    do { code = Math.floor(100000 + Math.random() * 900000).toString(); } while (rooms[code]);
-    return code;
-}
-
-io.on('connection', (socket) => {
-    socket.on('create_room', () => {
-        const roomCode = generateRoomCode();
-        rooms[roomCode] = { hostId: socket.id, players: {}, state: 'waiting', ropePosition: 50, timeLeft: MATCH_DURATION, timerInterval: null, botInterval: null };
-        socket.join(roomCode);
-        socket.emit('room_created', { roomCode });
-    });
-
-    socket.on('join_room', ({ roomCode, name, team }) => {
-        const room = rooms[roomCode];
-        if (!room) return socket.emit('join_error', 'ไม่พบห้องนี้!');
-        if (room.state === 'playing') return socket.emit('join_error', 'กำลังแข่งขันอยู่ ไม่สามารถเข้าได้!');
-
-        const teamPlayers = Object.values(room.players).filter(p => p.team === team);
-        if (teamPlayers.length >= 16) return socket.emit('join_error', `ทีม ${team} เต็มโควต้าแล้ว!`);
-
-        const takenSlots = teamPlayers.map(p => p.slot);
-        let freeSlot = 0; while (takenSlots.includes(freeSlot)) freeSlot++;
-
-        room.players[socket.id] = { id: socket.id, name: name.trim() || 'Player', team: team, slot: freeSlot, qIndex: 0, qStartTime: 0, isBot: false };
-
-        socket.join(roomCode);
-        socket.emit('join_success', { name: room.players[socket.id].name, team, roomCode });
-        io.to(roomCode).emit('update_lobby', { players: Object.values(room.players) });
-    });
-
-    // ให้ Host เตะคนออก
-    socket.on('kick_player', ({ roomCode, playerId }) => {
-        const room = rooms[roomCode];
-        if (room && room.players[playerId] && room.hostId === socket.id) {
-            if (!room.players[playerId].isBot) io.to(playerId).emit('kicked');
-            delete room.players[playerId];
-            io.to(roomCode).emit('update_lobby', { players: Object.values(room.players) });
-        }
-    });
-
-    // ให้ผู้เล่นกดออกห้องเอง
-    socket.on('leave_room', ({ roomCode }) => {
-        const room = rooms[roomCode];
-        if (room && room.players[socket.id]) {
-            delete room.players[socket.id];
-            io.to(roomCode).emit('update_lobby', { players: Object.values(room.players) });
-        }
-    });
-
-    // ให้ Host เพิ่ม Bot
-    socket.on('add_bot', ({ roomCode, team }) => {
-        const room = rooms[roomCode];
-        if (!room || room.hostId !== socket.id) return;
+        .host-quiz-panel { background: rgba(255,255,255,0.05); border: 2px dashed #facc15; margin: 10px 20px; padding: 12px 20px; border-radius: 16px; text-align: center; }
         
-        const teamPlayers = Object.values(room.players).filter(p => p.team === team);
-        if (teamPlayers.length >= 16) return;
+        .stage { flex: 1; display: flex; position: relative; }
+        .cliff { width: 38%; height: 70%; position: absolute; bottom: 0; padding: 15px; display: flex; flex-direction: column; }
+        .cliff-left { left: 0; background: linear-gradient(160deg, #ff2a5f, #7a001c); border-radius: 0 50px 0 0; }
+        .cliff-right { right: 0; background: linear-gradient(-160deg, #00d2ff, #003a7a); border-radius: 50px 0 0 0; }
 
-        const takenSlots = teamPlayers.map(p => p.slot);
-        let freeSlot = 0; while (takenSlots.includes(freeSlot)) freeSlot++;
+        .team-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;}
+        .btn-add-bot { background: #10b981; color: white; border: none; padding: 5px 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.8em; }
 
-        const botId = 'bot_' + Math.random().toString(36).substring(2, 9);
-        room.players[botId] = { id: botId, name: '🤖 Bot_' + Math.floor(Math.random()*999), team: team, slot: freeSlot, isBot: true };
-        io.to(roomCode).emit('update_lobby', { players: Object.values(room.players) });
-    });
+        .grid-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+        .slot-box { background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2); border-radius: 8px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.8em; position: relative; }
+        .slot-box.filled { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.4); }
+        .btn-kick { position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7em; cursor: pointer; display: none; }
+        .slot-box:hover .btn-kick { display: block; }
 
-    socket.on('select_team_next_round', ({ roomCode, team }) => {
-        const room = rooms[roomCode];
-        if (!room || !room.players[socket.id]) return;
+        .chasm { position: absolute; left: 38%; right: 38%; height: 100%; background: #05050a; z-index: -1; }
+        .rope-system { position: absolute; top: 40%; left: 5%; right: 5%; height: 20px; z-index: 20; }
+        .rope-line { width: 100%; height: 14px; background: repeating-linear-gradient(45deg, #d4a373, #d4a373 10px, #a8794d 10px, #a8794d 20px); border-radius: 10px; position: relative; }
+        .rope-knot { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 44px; height: 44px; background: #facc15; border-radius: 50%; border: 3px solid #fff; display: flex; align-items: center; justify-content: center; transition: left 0.2s linear;}
+    </style>
+</head>
+<body>
+    <div id="lock-screen"><h1 style="color:#ef4444;">🔒 เติม ?admin=true ท้าย URL</h1></div>
+    <div id="create-screen"><button class="btn-create" onclick="createRoom()">➕ สร้างห้องแข่งขัน</button></div>
 
-        const maxPerTeam = Math.ceil(Object.keys(room.players).length / 2);
-        const teamPlayers = Object.values(room.players).filter(p => p.team === team);
+    <div id="arena-screen">
+        <div class="header">
+            <div><span style="color: #94a3b8;">ROOM PIN:</span> <span class="pin-badge" id="display-pin">------</span></div>
+            <div class="timer-display" id="timer-box">100</div>
+            <div><button class="btn-start" id="start-btn" onclick="startMatch()">🚀 เริ่มการแข่งขัน</button></div>
+        </div>
+        <div class="host-quiz-panel"><h2 id="host-q-text" style="color:#facc15;">รอผู้เล่นเข้าห้อง หรือเพิ่ม Bot...</h2></div>
 
-        if (teamPlayers.length >= maxPerTeam) return socket.emit('join_error', `ทีม ${team} เต็มแล้ว! ให้เลือกอีกทีมครับ`);
+        <div class="stage">
+            <div class="cliff cliff-left">
+                <div class="team-header">
+                    <h2>🔴 RED (<span id="red-count">0</span>)</h2>
+                    <button class="btn-add-bot" onclick="addBot('RED')">🤖 +Bot</button>
+                </div>
+                <div class="grid-slots" id="red-slots"></div>
+            </div>
+            <div class="chasm"></div>
+            <div class="rope-system"><div class="rope-line"><div class="rope-knot" id="knot">⚡</div></div></div>
+            <div class="cliff cliff-right">
+                <div class="team-header">
+                    <button class="btn-add-bot" onclick="addBot('BLUE')">🤖 +Bot</button>
+                    <h2>BLUE 🔵 (<span id="blue-count">0</span>)</h2>
+                </div>
+                <div class="grid-slots" id="blue-slots"></div>
+            </div>
+        </div>
+    </div>
 
-        let freeSlot = 0; while (teamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
-        room.players[socket.id].team = team; room.players[socket.id].slot = freeSlot;
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('admin') === 'true') {
+            document.getElementById('lock-screen').style.display = 'none'; document.getElementById('create-screen').style.display = 'flex';
+        }
 
-        socket.emit('team_selected_success');
-        io.to(roomCode).emit('update_lobby', { players: Object.values(room.players) });
-    });
+        const socket = io(); let currentRoomCode = '';
 
-    socket.on('start_match', ({ roomCode }) => {
-        const room = rooms[roomCode];
-        if (!room || room.hostId !== socket.id) return;
-        if (Object.values(room.players).some(p => !p.team)) return socket.emit('start_error', 'ยังมีคนไม่เลือกทีม!');
+        function createRoom() { socket.emit('create_room'); }
+        socket.on('room_created', (data) => {
+            currentRoomCode = data.roomCode;
+            document.getElementById('create-screen').style.display = 'none';
+            document.getElementById('arena-screen').style.display = 'flex';
+            document.getElementById('display-pin').innerText = currentRoomCode;
+            initSlots();
+        });
 
-        room.state = 'playing'; room.ropePosition = 50; room.timeLeft = MATCH_DURATION;
+        function addBot(team) { socket.emit('add_bot', { roomCode: currentRoomCode, team }); }
+        function kickPlayer(playerId) { socket.emit('kick_player', { roomCode: currentRoomCode, playerId }); }
 
-        for (let id in room.players) {
-            if(!room.players[id].isBot) {
-                room.players[id].qIndex = 0; room.players[id].qStartTime = Date.now();
-                io.to(id).emit('start_player_stream', { qIndex: 0, totalQuestions: questions.length, qData: questions[0] });
+        function initSlots() { renderEmptySlots('red-slots'); renderEmptySlots('blue-slots'); }
+        function renderEmptySlots(containerId) {
+            const container = document.getElementById(containerId); container.innerHTML = '';
+            for (let i = 0; i < 16; i++) {
+                const box = document.createElement('div'); box.className = 'slot-box'; box.id = `${containerId}-slot-${i}`; box.innerHTML = `<span style="opacity:0.2;">${i+1}</span>`; container.appendChild(box);
             }
         }
-        io.to(roomCode).emit('match_started', { duration: MATCH_DURATION });
 
-        // Logic การทำงานของ Bot ระหว่างแข่ง
-        clearInterval(room.botInterval);
-        room.botInterval = setInterval(() => {
-            if(room.state !== 'playing') return clearInterval(room.botInterval);
-            Object.values(room.players).forEach(p => {
-                if (p.isBot && Math.random() < 0.3) { // บอทมีโอกาสสุ่มตอบ 30% ทุกๆ 1 วิ
-                    let power = Math.random() < 0.6 ? 45 : 0; // ตอบถูก 60% ได้พลัง 45
-                    if(power > 0) {
-                        const divider = Math.max(1, Object.values(room.players).filter(pl => pl.team === p.team).length);
-                        const move = (power / 100) * (8 / divider);
-                        room.ropePosition += (p.team === 'RED' ? -move : move);
-                        room.ropePosition = Math.max(0, Math.min(100, room.ropePosition));
-                        io.to(roomCode).emit('update_rope', { ropePosition: room.ropePosition });
-                        checkWinCon(roomCode);
-                    }
+        socket.on('update_lobby', (data) => {
+            initSlots(); let redNum = 0, blueNum = 0;
+            data.players.forEach(p => {
+                if (!p.team) return;
+                const prefix = p.team === 'RED' ? 'red-slots' : 'blue-slots';
+                const slotBox = document.getElementById(`${prefix}-slot-${p.slot}`);
+                if (slotBox) {
+                    slotBox.className = 'slot-box filled';
+                    const icon = p.isBot ? '🤖' : '🏃‍♂️';
+                    slotBox.innerHTML = `
+                        <button class="btn-kick" onclick="kickPlayer('${p.id}')">❌</button>
+                        <div>${icon}</div>
+                        <div style="font-weight:bold; font-size:0.9em;">${p.name}</div>
+                    `;
                 }
+                if (p.team === 'RED') redNum++; if (p.team === 'BLUE') blueNum++;
             });
-        }, 1000);
+            document.getElementById('red-count').innerText = redNum; document.getElementById('blue-count').innerText = blueNum;
+        });
 
-        clearInterval(room.timerInterval);
-        room.timerInterval = setInterval(() => {
-            room.timeLeft--; io.to(roomCode).emit('timer_tick', room.timeLeft);
-            if (room.timeLeft <= 0) endMatch(roomCode);
-        }, 1000);
-    });
+        function startMatch() { socket.emit('start_match', { roomCode: currentRoomCode }); }
+        socket.on('start_error', (msg) => alert(msg));
+        socket.on('match_started', () => {
+            document.getElementById('start-btn').style.display = 'none'; document.getElementById('knot').style.left = '50%';
+            document.getElementById('host-q-text').innerText = "🔥 การต่อสู้เริ่มขึ้นแล้ว! 🔥";
+        });
 
-    socket.on('submit_answer_fast', ({ roomCode, qIndex, answerIndex }) => {
-        const room = rooms[roomCode];
-        if (!room || room.state !== 'playing' || !room.players[socket.id]) return;
-        const player = room.players[socket.id];
-        
-        const isCorrect = (answerIndex === questions[qIndex].answer);
-        let power = 0;
-        if (isCorrect) {
-            const timeTaken = Math.min(15, (Date.now() - player.qStartTime) / 1000);
-            power = Math.round((50 + (50 * ((15 - timeTaken) / 15))) * 10) / 10;
-            const divider = Math.max(1, Object.values(room.players).filter(p => p.team === player.team).length);
-            const move = (power / 100) * (8 / divider);
-            room.ropePosition += (player.team === 'RED' ? -move : move);
-            room.ropePosition = Math.max(0, Math.min(100, room.ropePosition));
-        }
+        socket.on('timer_tick', (t) => { document.getElementById('timer-box').innerText = t; });
+        socket.on('update_rope', (data) => { document.getElementById('knot').style.left = `${data.ropePosition}%`; });
 
-        player.qIndex = (qIndex + 1) % questions.length; player.qStartTime = Date.now();
-        socket.emit('answer_feedback', { isCorrect, power, nextQIndex: player.qIndex, nextQData: questions[player.qIndex] });
-        io.to(roomCode).emit('update_rope', { ropePosition: room.ropePosition });
-        checkWinCon(roomCode);
-    });
+        socket.on('round_ended_survivors', (data) => {
+            document.getElementById('knot').style.left = '50%'; document.getElementById('timer-box').innerText = "100";
+            document.getElementById('host-q-text').innerText = `🏁 จบรอบ! ทีม ${data.winningTeam} ชนะ รอผู้รอดชีวิตเลือกทีมใหม่...`;
+            document.getElementById('start-btn').style.display = 'inline-block'; document.getElementById('start-btn').innerText = "🚀 เริ่มรอบต่อไป";
+        });
 
-    function checkWinCon(roomCode) {
-        const room = rooms[roomCode];
-        if (room.ropePosition <= 0 || room.ropePosition >= 100) endMatch(roomCode);
-    }
-
-    function endMatch(roomCode) {
-        const room = rooms[roomCode];
-        if (!room || room.state !== 'playing') return;
-        room.state = 'ended';
-        clearInterval(room.timerInterval);
-        clearInterval(room.botInterval);
-
-        let winningTeam = room.ropePosition > 50 ? 'BLUE' : (room.ropePosition < 50 ? 'RED' : (Math.random() < 0.5 ? 'RED' : 'BLUE'));
-        
-        const winners = [];
-        for (let id in room.players) {
-            if (room.players[id].team === winningTeam) {
-                room.players[id].team = null; room.players[id].slot = -1; // รีเซ็ตทีมคนชนะ
-                if(!room.players[id].isBot) winners.push(room.players[id]);
-            } else {
-                if(!room.players[id].isBot) io.to(id).emit('eliminated', { msg: '💥 ทีมคุณแพ้! ถูกคัดออก' });
-                delete room.players[id]; // เตะคนแพ้และบอทฝั่งแพ้ออก
-            }
-        }
-
-        const remainingCount = Object.keys(room.players).length;
-
-        if (remainingCount === 1 && winners.length === 1) {
-            io.to(winners[0].id).emit('you_are_champion');
-            io.to(roomCode).emit('champion_declared', { champName: winners[0].name });
-        } else {
-            winners.forEach(w => io.to(w.id).emit('survived_round', { remainingCount }));
-            io.to(roomCode).emit('round_ended_survivors', { winningTeam, remainingCount });
-        }
-    }
-
-    socket.on('disconnect', () => {
-        for (let code in rooms) {
-            if (rooms[code].players[socket.id]) {
-                delete rooms[code].players[socket.id];
-                io.to(code).emit('update_lobby', { players: Object.values(rooms[code].players) });
-            }
-        }
-    });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+        socket.on('champion_declared', (data) => {
+            document.getElementById('host-q-text').innerHTML = `👑 ขอแสดงความยินดีกับผู้ชนะเลิศ: ${data.champName} 🏆`;
+            document.getElementById('start-btn').style.display = 'none';
+        });
+    </script>
+</body>
+</html>
