@@ -5,52 +5,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Quiz Tug of War - Player</title>
     <script src="/socket.io/socket.io.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700;900&family=Orbitron:wght@900&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: 'Kanit', sans-serif; background: #0f172a; color: white; margin: 0; padding: 20px; text-align: center; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Kanit', sans-serif; background: #0f172a; color: white; min-height: 100vh; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
-        input[type="text"] { width: 100%; padding: 15px; font-size: 1.3em; font-family: 'Kanit'; border-radius: 12px; border: 2px solid #38bdf8; background: #1e293b; color: white; margin-bottom: 20px; text-align: center; }
-        
-        .team-btn { width: 100%; padding: 20px; font-size: 1.5em; font-family: 'Kanit'; font-weight: bold; border: none; border-radius: 15px; margin-bottom: 15px; color: white; cursor: pointer; }
-        .team-red { background: #ef4444; }
-        .team-blue { background: #3b82f6; }
-        
-        #quiz-screen, #result-screen, #waiting-screen { display: none; }
+        .card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 25px; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.5); }
 
-        .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
-        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 20px; font-size: 1.3em; font-family: 'Kanit'; font-weight: bold; border-radius: 12px; }
-        .choice-btn:disabled { opacity: 0.4; }
+        input { width: 100%; padding: 16px; font-size: 1.2em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; border: 2px solid #38bdf8; background: rgba(0,0,0,0.4); color: #fff; margin-bottom: 15px; text-align: center; outline: none; }
+        input:focus { border-color: #00ffcc; }
 
-        .top-status { display: flex; justify-content: space-between; background: #1e293b; padding: 15px; border-radius: 12px; font-size: 1.2em; font-weight: bold; margin-bottom: 20px; }
+        .btn-3d { width: 100%; padding: 18px; font-size: 1.4em; font-family: 'Kanit'; font-weight: 900; border: none; border-radius: 16px; margin-bottom: 12px; color: white; cursor: pointer; }
+        .team-red { background: linear-gradient(180deg, #ff4d4d, #d10000); box-shadow: 0 5px 0 #8a0000; }
+        .team-blue { background: linear-gradient(180deg, #4da6ff, #0066cc); box-shadow: 0 5px 0 #004080; }
+
+        #quiz-screen, #result-screen, #waiting-screen { display: none; width: 100%; max-width: 450px; }
+
+        .q-box { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 18px; font-size: 1.3em; font-weight: bold; margin-bottom: 20px; }
+        .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 20px 10px; font-size: 1.2em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; }
+        .choice-btn.selected { background: #facc15; color: #000; border-color: #fff; }
     </style>
 </head>
 <body>
 
-    <!-- Step 1: กรอกชื่อและเลือกทีม -->
-    <div id="setup-screen">
-        <h2>กรอกชื่อของคุณ</h2>
-        <input type="text" id="player-name" placeholder="ใส่ชื่อเล่นตรงนี้..." maxlength="12">
+    <!-- Step 1: Join Room Form -->
+    <div id="join-screen" class="card">
+        <h2 style="color: #38bdf8; margin-bottom: 15px;">🎮 เข้าสู่การแข่งขัน</h2>
+        <input type="number" id="pin-input" placeholder="กรอกรหัส PIN 6 หลัก" maxlength="6">
+        <input type="text" id="name-input" placeholder="ตั้งชื่อตัวละคร..." maxlength="12">
         
-        <h3>เลือกทีมที่ต้องการเข้าร่วม</h3>
-        <button class="team-btn team-red" onclick="joinGame('RED')">🔴 TEAM RED (<span id="red-num">0</span>/16)</button>
-        <button class="team-btn team-blue" onclick="joinGame('BLUE')">🔵 TEAM BLUE (<span id="blue-num">0</span>/16)</button>
+        <p style="margin-bottom: 10px; font-weight: bold;">เลือกทีมที่ต้องการเข้าร่วม</p>
+        <button class="btn-3d team-red" onclick="joinRoom('RED')">🔴 TEAM RED</button>
+        <button class="btn-3d team-blue" onclick="joinRoom('BLUE')">🔵 TEAM BLUE</button>
     </div>
 
-    <!-- Step 2: หน้ารอหลังเข้าทีมสำเร็จ -->
-    <div id="waiting-screen">
-        <h1 id="welcome-text"></h1>
-        <p style="font-size: 1.2em; color: #94a3b8;">ชื่อของคุณขึ้นไปอยู่บนหน้าผาแล้ว!</p>
-        <p style="font-size: 1.5em; color: #facc15;">โปรดมองหน้าจอหลักเพื่อรอเริ่มแข่ง...</p>
+    <!-- Step 2: Waiting Screen -->
+    <div id="waiting-screen" class="card">
+        <h1 id="welcome-text" style="font-size: 2em; margin-bottom: 10px;"></h1>
+        <p id="slot-info" style="font-size: 1.2em; color: #facc15; margin-bottom: 15px;"></p>
+        <p style="color: #cbd5e1;">ยึดตำแหน่งบนหน้าผาเรียบร้อย!</p>
+        <h3 style="color: #00ffcc; margin-top: 15px;">⏳ รอ Host กดเริ่มแข่ง...</h3>
     </div>
 
-    <!-- Step 3: หน้าทำโจทย์ -->
+    <!-- Step 3: Quiz Screen -->
     <div id="quiz-screen">
-        <div class="top-status">
-            <span id="display-team">TEAM</span>
-            <span>⏱️ <span id="timer">15</span> วิ</span>
+        <div style="display:flex; justify-size:space-between; margin-bottom:15px; font-size:1.2em; font-weight:bold;">
+            <span id="my-team-text">TEAM</span>
+            <span style="color:#facc15;">⏱️ <span id="timer">15</span></span>
         </div>
-        <h2 id="q-text" style="background:#1e293b; padding:20px; border-radius:12px;">กำลังรอโจทย์...</h2>
+        <div class="q-box" id="q-text">กำลังโหลดโจทย์...</div>
         <div class="grid-choices">
             <button class="choice-btn" id="c0" onclick="sendAns(0)">A</button>
             <button class="choice-btn" id="c1" onclick="sendAns(1)">B</button>
@@ -59,37 +63,39 @@
         </div>
     </div>
 
-    <!-- Step 4: ผลลัพธ์ -->
-    <div id="result-screen">
-        <h1 id="res-icon" style="font-size: 4em; margin: 10px 0;"></h1>
+    <!-- Step 4: Result Screen -->
+    <div id="result-screen" class="card">
+        <h1 id="res-icon" style="font-size: 4em;"></h1>
         <h2 id="res-title"></h2>
-        <h1 id="res-power" style="color: #facc15; font-size: 3em;">💪 0</h1>
+        <h1 id="res-power" style="color: #facc15; font-size: 3em; margin-top: 15px;">💪 +0</h1>
     </div>
 
     <script>
         const socket = io();
+        let currentRoomCode = '';
         let myTeam = '';
 
-        socket.on('update_lobby', (data) => {
-            document.getElementById('red-num').innerText = data.red.length;
-            document.getElementById('blue-num').innerText = data.blue.length;
-        });
+        function joinRoom(team) {
+            const pin = document.getElementById('pin-input').value;
+            const name = document.getElementById('name-input').value;
 
-        function joinGame(team) {
-            const name = document.getElementById('player-name').value;
-            if (!name.trim()) return alert('กรุณากรอบชื่อก่อนเข้าเล่นครับ!');
-            
-            socket.emit('join_game', { name, team });
+            if (!pin || pin.length !== 6) return alert('กรุณากรอกรหัส PIN ให้ครบ 6 หลัก!');
+            if (!name.trim()) return alert('กรุณาตั้งชื่อตัวละคร!');
+
+            myTeam = team;
+            currentRoomCode = pin;
+            socket.emit('join_room', { roomCode: pin, name, team });
         }
 
         socket.on('join_error', (msg) => alert(msg));
 
         socket.on('join_success', (data) => {
-            myTeam = data.team;
-            document.getElementById('setup-screen').style.display = 'none';
+            document.getElementById('join-screen').style.display = 'none';
             document.getElementById('waiting-screen').style.display = 'block';
-            document.getElementById('welcome-text').innerText = `ยินดีต้อนรับ ${data.name}!`;
-            document.getElementById('welcome-text').style.color = myTeam === 'RED' ? '#ef4444' : '#3b82f6';
+
+            document.getElementById('welcome-text').innerText = data.name;
+            document.getElementById('welcome-text').style.color = data.team === 'RED' ? '#ff4d4d' : '#4da6ff';
+            document.getElementById('slot-info').innerText = `ประจำตำแหน่งช่องที่ ${data.slot + 1} (${data.team === 'RED' ? 'ทีมแดง' : 'ทีมน้ำเงิน'})`;
         });
 
         socket.on('new_question', (data) => {
@@ -98,35 +104,35 @@
             document.getElementById('quiz-screen').style.display = 'block';
 
             document.getElementById('q-text').innerText = data.questionData.q;
-            document.getElementById('display-team').innerText = myTeam === 'RED' ? '🔴 RED TEAM' : '🔵 BLUE TEAM';
+            document.getElementById('my-team-text').innerText = myTeam === 'RED' ? '🔴 RED TEAM' : '🔵 BLUE TEAM';
 
             for (let i = 0; i < 4; i++) {
                 const btn = document.getElementById(`c${i}`);
                 btn.innerText = data.questionData.choices[i];
                 btn.disabled = false;
-                btn.style.background = '#1e293b';
+                btn.className = 'choice-btn';
             }
         });
 
         socket.on('timer_tick', (t) => {
-            document.getElementById('timer').innerText = t;
+            document.getElementById('timer').innerText = t < 10 ? `0${t}` : t;
         });
 
         function sendAns(idx) {
-            socket.emit('submit_answer', idx);
+            socket.emit('submit_answer', { roomCode: currentRoomCode, answerIndex: idx });
             for (let i = 0; i < 4; i++) {
                 document.getElementById(`c${i}`).disabled = true;
             }
-            document.getElementById(`c${idx}`).style.background = '#f59e0b';
+            document.getElementById(`c${idx}`).classList.add('selected');
         }
 
         socket.on('answer_result', (data) => {
             document.getElementById('quiz-screen').style.display = 'none';
             document.getElementById('result-screen').style.display = 'block';
 
-            document.getElementById('res-icon').innerText = data.isCorrect ? '✅' : '❌';
-            document.getElementById('res-title').innerText = data.isCorrect ? 'ถูกต้อง!' : 'ตอบผิด!';
-            document.getElementById('res-power').innerText = `💪 แรงดึง: ${data.power}`;
+            document.getElementById('res-icon').innerText = data.isCorrect ? '🎯' : '❌';
+            document.getElementById('res-title').innerText = data.isCorrect ? 'ตอบถูกต้อง!' : 'ตอบผิด!';
+            document.getElementById('res-power').innerText = `💪 +${data.power}`;
         });
     </script>
 </body>
