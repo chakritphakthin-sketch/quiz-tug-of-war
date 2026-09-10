@@ -8,43 +8,38 @@
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700;900&family=Orbitron:wght@900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Kanit', sans-serif; background: #0f172a; color: white; min-height: 100vh; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow-x: hidden; }
+        body { font-family: 'Kanit', sans-serif; background: #0f172a; color: white; min-height: 100vh; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 
-        .card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 25px; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.5); z-index: 10; }
+        .card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 20px; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.5); }
 
-        input { width: 100%; padding: 16px; font-size: 1.2em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; border: 2px solid #38bdf8; background: rgba(0,0,0,0.4); color: #fff; margin-bottom: 15px; text-align: center; outline: none; }
-        .btn-3d { width: 100%; padding: 18px; font-size: 1.4em; font-family: 'Kanit'; font-weight: 900; border: none; border-radius: 16px; margin-bottom: 12px; color: white; cursor: pointer; transition: 0.1s; }
+        input { width: 100%; padding: 14px; font-size: 1.1em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; border: 2px solid #38bdf8; background: rgba(0,0,0,0.4); color: #fff; margin-bottom: 12px; text-align: center; outline: none; }
+        .btn-3d { width: 100%; padding: 16px; font-size: 1.3em; font-family: 'Kanit'; font-weight: 900; border: none; border-radius: 16px; margin-bottom: 10px; color: white; cursor: pointer; transition: 0.1s; }
         .btn-3d:active { transform: translateY(4px); }
-        .team-red { background: linear-gradient(180deg, #ff4d4d, #d10000); box-shadow: 0 5px 0 #8a0000; }
-        .team-blue { background: linear-gradient(180deg, #4da6ff, #0066cc); box-shadow: 0 5px 0 #004080; }
+        .team-red { background: linear-gradient(180deg, #ff4d4d, #d10000); box-shadow: 0 4px 0 #8a0000; }
+        .team-blue { background: linear-gradient(180deg, #4da6ff, #0066cc); box-shadow: 0 4px 0 #004080; }
+        .btn-swap { background: linear-gradient(180deg, #f59e0b, #d97706); box-shadow: 0 4px 0 #b45309; }
 
         #quiz-screen, #result-screen, #waiting-screen { display: none; width: 100%; max-width: 450px; }
 
-        /* ระบบมินิ Top-View บนมือถือ */
-        .mini-arena { position: relative; width: 100%; height: 120px; background: #4d7c0f; border-radius: 16px; margin-bottom: 20px; overflow: hidden; border: 4px solid #3f6212; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 5px 15px rgba(0,0,0,0.5); }
-        .mini-rope { position: absolute; left: 0; right: 0; height: 12px; background: repeating-linear-gradient(45deg, #d4a373, #d4a373 6px, #a8794d 6px, #a8794d 12px); box-shadow: 0 5px 10px rgba(0,0,0,0.8); border-radius: 6px; z-index: 1; }
+        /* สนามจิ๋วบนมือถือ */
+        .mini-arena { position: relative; width: 100%; height: 110px; background: #4d7c0f; border-radius: 16px; margin-bottom: 15px; overflow: hidden; border: 3px solid #3f6212; display: flex; align-items: center; justify-content: center; }
+        .mini-rope { position: absolute; left: 0; right: 0; height: 10px; background: repeating-linear-gradient(45deg, #d4a373, #d4a373 5px, #a8794d 5px, #a8794d 10px); }
         
-        .my-avatar { position: relative; display: flex; flex-direction: column; align-items: center; z-index: 5; transition: transform 0.2s; }
-        .my-head { width: 45px; height: 45px; border-radius: 50%; border: 3px solid #111; box-shadow: 0 10px 10px rgba(0,0,0,0.5); background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.4), transparent); }
-        .my-hands { display: flex; gap: 24px; position: absolute; z-index: 10; top: 15px; }
-        .my-hand { width: 14px; height: 14px; border-radius: 50%; background: #fcd34d; border: 2px solid #92400e; box-shadow: 0 3px 5px rgba(0,0,0,0.5); }
+        .my-avatar { position: relative; display: flex; flex-direction: column; align-items: center; z-index: 5; }
+        .my-head { width: 40px; height: 40px; border-radius: 50%; border: 3px solid #111; box-shadow: 0 5px 10px rgba(0,0,0,0.5); }
+        .my-hands { display: flex; gap: 20px; position: absolute; z-index: 10; top: 14px; }
+        .my-hand { width: 12px; height: 12px; border-radius: 50%; background: #fcd34d; border: 2px solid #92400e; }
         
         .my-team-red .my-head { background-color: #ef4444; }
         .my-team-blue .my-head { background-color: #3b82f6; }
-        
-        /* มือถือหันข้างในจอ */
-        .my-team-red .my-hands { left: 35px; }
-        .my-team-blue .my-hands { right: 35px; }
+        .my-team-red .my-hands { left: 30px; }
+        .my-team-blue .my-hands { right: 30px; }
 
-        /* แอนิเมชันกระตุกเฉพาะตัวในมือถือ */
-        @keyframes personal-pull-red { 0% { transform: translateX(0); } 50% { transform: translateX(-20px); } 100% { transform: translateX(0); } }
-        @keyframes personal-pull-blue { 0% { transform: translateX(0); } 50% { transform: translateX(20px); } 100% { transform: translateX(0); } }
-        .anim-pull.my-team-red { animation: personal-pull-red 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .anim-pull.my-team-blue { animation: personal-pull-blue 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .team-count-bar { display: flex; justify-content: space-between; background: rgba(0,0,0,0.4); padding: 8px 15px; border-radius: 10px; margin-bottom: 12px; font-weight: bold; font-size: 0.95em; }
 
-        .q-box { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 18px; font-size: 1.3em; font-weight: bold; margin-bottom: 20px; text-align: center; }
-        .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 20px 10px; font-size: 1.2em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; cursor: pointer; }
+        .q-box { background: rgba(255,255,255,0.1); padding: 18px; border-radius: 18px; font-size: 1.2em; font-weight: bold; margin-bottom: 15px; text-align: center; }
+        .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 18px 10px; font-size: 1.1em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; cursor: pointer; }
         .choice-btn.selected { background: #facc15; color: #000; border-color: #fff; transform: scale(0.95); }
     </style>
 </head>
@@ -54,35 +49,46 @@
         <h2 style="color: #38bdf8; margin-bottom: 15px;">🎮 สมรภูมิดึงเชือก</h2>
         <input type="number" id="pin-input" placeholder="กรอกรหัส PIN 6 หลัก" maxlength="6">
         <input type="text" id="name-input" placeholder="ตั้งชื่อตัวละคร..." maxlength="12">
+        
         <p style="margin-bottom: 10px; font-weight: bold;">เลือกทีมที่ต้องการเข้าร่วม</p>
         <button class="btn-3d team-red" onclick="joinRoom('RED')">🔴 TEAM RED</button>
         <button class="btn-3d team-blue" onclick="joinRoom('BLUE')">🔵 TEAM BLUE</button>
     </div>
 
+    <!-- หน้าต่างรอก่อนเริ่มแข่ง + สลับทีมได้ -->
     <div id="waiting-screen" class="card">
-        <div class="mini-arena" id="wait-arena">
+        <div class="team-count-bar">
+            <span style="color: #ef4444;">🔴 ทีมแดง: <span id="wait-red-num">0</span>/16</span>
+            <span style="color: #3b82f6;">🔵 ทีมน้ำเงิน: <span id="wait-blue-num">0</span>/16</span>
+        </div>
+
+        <div class="mini-arena">
             <div class="mini-rope"></div>
             <div class="my-avatar" id="wait-avatar">
                 <div class="my-hands"><div class="my-hand"></div><div class="my-hand"></div></div>
                 <div class="my-head"></div>
             </div>
         </div>
-        <h1 id="welcome-text" style="font-size: 2em;"></h1>
-        <p style="color: #cbd5e1; margin-top: 10px;">จับเชือกพร้อมแล้ว!</p>
-        <h3 style="color: #00ffcc; margin-top: 15px;">⏳ รอ Host กดเริ่มแข่ง...</h3>
+
+        <h1 id="welcome-text" style="font-size: 1.8em;"></h1>
+        <p id="my-slot-text" style="color: #facc15; margin: 5px 0 15px 0; font-size: 0.95em;"></p>
+        
+        <button class="btn-3d btn-swap" onclick="switchTeam()">🔄 กดสลับทีมแข่ง</button>
+        
+        <h3 style="color: #00ffcc; margin-top: 10px; font-size: 1.1em;">⏳ รอ Host กดเริ่มแข่ง...</h3>
     </div>
 
     <div id="quiz-screen">
         <div class="mini-arena">
             <div class="mini-rope"></div>
             <div class="my-avatar" id="quiz-avatar">
-                <div style="position: absolute; top:-25px; font-size: 12px; background:rgba(0,0,0,0.8); padding:2px 8px; border-radius:10px;" id="my-name-hud"></div>
+                <div style="position: absolute; top:-22px; font-size: 11px; background:rgba(0,0,0,0.8); padding:2px 8px; border-radius:10px;" id="my-name-hud"></div>
                 <div class="my-hands"><div class="my-hand"></div><div class="my-hand"></div></div>
                 <div class="my-head"></div>
             </div>
         </div>
         
-        <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold;">
+        <div style="display:flex; justify-size:space-between; margin-bottom:12px; font-weight:bold;">
             <span id="my-team-text">TEAM</span>
             <span style="color:#facc15;">⏱️ <span id="timer" style="font-family:'Orbitron'; font-size: 1.2em;">15</span></span>
         </div>
@@ -118,19 +124,45 @@
             socket.emit('join_room', { roomCode: pin, name, team });
         }
 
+        function switchTeam() {
+            socket.emit('switch_team', { roomCode: currentRoomCode });
+        }
+
         socket.on('join_error', (msg) => alert(msg));
 
         socket.on('join_success', (data) => {
             document.getElementById('join-screen').style.display = 'none';
             document.getElementById('waiting-screen').style.display = 'block';
 
-            document.getElementById('welcome-text').innerText = data.name;
-            document.getElementById('welcome-text').style.color = data.team === 'RED' ? '#ff4d4d' : '#4da6ff';
+            updatePlayerInfo(data.name, data.team, data.slot);
+        });
+
+        socket.on('team_switched', (data) => {
+            myTeam = data.team;
+            updatePlayerInfo(myName, data.team, data.slot);
+        });
+
+        function updatePlayerInfo(name, team, slot) {
+            document.getElementById('welcome-text').innerText = name;
+            document.getElementById('welcome-text').style.color = team === 'RED' ? '#ff4d4d' : '#4da6ff';
+            document.getElementById('my-slot-text').innerText = `ยืนประจำตำแหน่งลำดับที่ ${slot + 1} (${team === 'RED' ? 'ทีมแดง' : 'ทีมน้ำเงิน'})`;
             
-            const avatarClass = data.team === 'RED' ? 'my-team-red' : 'my-team-blue';
+            const avatarClass = team === 'RED' ? 'my-team-red' : 'my-team-blue';
             document.getElementById('wait-avatar').className = `my-avatar ${avatarClass}`;
             document.getElementById('quiz-avatar').className = `my-avatar ${avatarClass}`;
-            document.getElementById('my-name-hud').innerText = data.name;
+            document.getElementById('my-name-hud').innerText = name;
+        }
+
+        // อัปเดตจำนวนคนในทีม Real-time
+        socket.on('update_lobby', (data) => {
+            let redCount = 0; let blueCount = 0;
+            data.players.forEach(p => {
+                if (p.team === 'RED') redCount++;
+                if (p.team === 'BLUE') blueCount++;
+            });
+
+            document.getElementById('wait-red-num').innerText = redCount;
+            document.getElementById('wait-blue-num').innerText = blueCount;
         });
 
         socket.on('new_question', (data) => {
@@ -156,11 +188,6 @@
             socket.emit('submit_answer', { roomCode: currentRoomCode, answerIndex: idx });
             for (let i = 0; i < 4; i++) { document.getElementById(`c${i}`).disabled = true; }
             document.getElementById(`c${idx}`).classList.add('selected');
-
-            // สั่งแอนิเมชันกระตุกเชือกในมือถือตัวเอง
-            const avatar = document.getElementById('quiz-avatar');
-            avatar.classList.add('anim-pull');
-            setTimeout(() => avatar.classList.remove('anim-pull'), 300);
         }
 
         socket.on('answer_result', (data) => {
@@ -171,7 +198,7 @@
                 document.getElementById('res-icon').innerText = data.isCorrect ? '🎯' : '❌';
                 document.getElementById('res-title').innerText = data.isCorrect ? 'ออกแรงสำเร็จ!' : 'พลาดท่า!';
                 document.getElementById('res-power').innerText = `💪 +${data.power}`;
-            }, 600); // ดีเลย์นิดนึงให้ดูแอนิเมชันกระตุกเสร็จก่อน
+            }, 400);
         });
     </script>
 </body>
