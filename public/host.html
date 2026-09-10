@@ -29,36 +29,49 @@
         .rope-texture { position: absolute; top: 50%; left: 0; right: 0; height: 18px; transform: translateY(-50%); background: repeating-linear-gradient(45deg, #d4a373, #d4a373 8px, #a8794d 8px, #a8794d 16px); box-shadow: 0 8px 12px rgba(0,0,0,0.6); border-radius: 10px; z-index: 5; }
         .knot { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 34px; height: 34px; background: #dc2626; border-radius: 6px; border: 3px solid #fff; z-index: 6; }
 
-        /* ตัวละคร + แขนดำ */
-        .player-top-down { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.1s; z-index: 10; }
-        .player-head { width: 42px; height: 42px; border-radius: 50%; border: 3px solid #000; box-shadow: 0 8px 10px rgba(0,0,0,0.5); background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.4), transparent); z-index: 8; }
+        /* ตัวละคร + ท่าจับชักเย่อสมจริง */
+        .player-top-down { position: absolute; display: flex; align-items: center; justify-content: center; transition: transform 0.1s; z-index: 10; width: 60px; height: 60px; }
+        .player-head { width: 42px; height: 42px; border-radius: 50%; border: 3px solid #000; box-shadow: 0 8px 10px rgba(0,0,0,0.5); background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.4), transparent); z-index: 8; position: absolute; }
         .red-team .player-head { background-color: #ef4444; }
         .blue-team .player-head { background-color: #3b82f6; }
 
-        /* เส้นแขนสีดำยืดจับเชือก */
-        .arm-line { position: absolute; background: #000; width: 4px; z-index: 4; border-radius: 2px; }
-        .pos-top .arm-line { top: 22px; height: 38px; }
-        .pos-bottom .arm-line { bottom: 22px; height: 38px; }
-        
-        .red-team .arm-left { left: 10px; transform: rotate(-15deg); }
-        .red-team .arm-right { right: 10px; transform: rotate(15deg); }
-        .blue-team .arm-left { left: 10px; transform: rotate(15deg); }
-        .blue-team .arm-right { right: 10px; transform: rotate(-15deg); }
+        /* การวางแขนและมือแบบชักเย่อ */
+        .arm { position: absolute; background: #000; height: 6px; border-radius: 3px; z-index: 4; transform-origin: left center; }
+        .hand { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: #fcd34d; border: 2px solid #000; z-index: 7; }
 
-        .player-hands { display: flex; gap: 24px; position: absolute; z-index: 7; }
-        .pos-top .player-hands { top: 52px; }
-        .pos-bottom .player-hands { bottom: 52px; }
-        .hand { width: 14px; height: 14px; border-radius: 50%; background: #fcd34d; border: 2px solid #000; }
-        
-        .pos-top { top: calc(50% - 70px); }
-        .pos-bottom { top: calc(50% + 12px); }
+        /* ตำแหน่งการยืน บน/ล่าง */
+        .pos-top { top: calc(50% - 75px); }
+        .pos-bottom { top: calc(50% + 15px); }
 
+        /* Red Team (ดึงไปซ้ายหันหน้าขวา) */
+        .red-team.pos-top .hand-1 { top: 60px; left: 15px; }
+        .red-team.pos-top .hand-2 { top: 60px; left: 40px; }
+        .red-team.pos-top .arm-1 { top: 30px; left: 15px; width: 38px; transform: rotate(75deg); }
+        .red-team.pos-top .arm-2 { top: 30px; left: 25px; width: 42px; transform: rotate(45deg); }
+
+        .red-team.pos-bottom .hand-1 { bottom: 60px; left: 15px; }
+        .red-team.pos-bottom .hand-2 { bottom: 60px; left: 40px; }
+        .red-team.pos-bottom .arm-1 { bottom: 30px; left: 15px; width: 38px; transform: rotate(-75deg); }
+        .red-team.pos-bottom .arm-2 { bottom: 30px; left: 25px; width: 42px; transform: rotate(-45deg); }
+
+        /* Blue Team (ดึงไปขวาหันหน้าซ้าย) */
+        .blue-team.pos-top .hand-1 { top: 60px; right: 15px; }
+        .blue-team.pos-top .hand-2 { top: 60px; right: 40px; }
+        .blue-team.pos-top .arm-1 { top: 30px; right: 15px; width: 38px; transform: rotate(105deg); transform-origin: right center; }
+        .blue-team.pos-top .arm-2 { top: 30px; right: 25px; width: 42px; transform: rotate(135deg); transform-origin: right center; }
+
+        .blue-team.pos-bottom .hand-1 { bottom: 60px; right: 15px; }
+        .blue-team.pos-bottom .hand-2 { bottom: 60px; right: 40px; }
+        .blue-team.pos-bottom .arm-1 { bottom: 30px; right: 15px; width: 38px; transform: rotate(-105deg); transform-origin: right center; }
+        .blue-team.pos-bottom .arm-2 { bottom: 30px; right: 25px; width: 42px; transform: rotate(-135deg); transform-origin: right center; }
+
+        /* ชื่อ */
         .player-name { position: absolute; background: rgba(0,0,0,0.85); padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; white-space: nowrap; border: 1px solid rgba(255,255,255,0.3); z-index: 12; }
-        .pos-top .player-name { top: -22px; }
-        .pos-bottom .player-name { bottom: -22px; }
+        .pos-top .player-name { top: -25px; }
+        .pos-bottom .player-name { bottom: -25px; }
 
-        @keyframes pull-red { 0% { transform: translateX(0); } 50% { transform: translateX(-20px); } 100% { transform: translateX(0); } }
-        @keyframes pull-blue { 0% { transform: translateX(0); } 50% { transform: translateX(20px); } 100% { transform: translateX(0); } }
+        @keyframes pull-red { 0% { transform: translateX(0); } 50% { transform: translateX(-15px); } 100% { transform: translateX(0); } }
+        @keyframes pull-blue { 0% { transform: translateX(0); } 50% { transform: translateX(15px); } 100% { transform: translateX(0); } }
         .pulling.red-team { animation: pull-red 0.3s ease; }
         .pulling.blue-team { animation: pull-blue 0.3s ease; }
         
@@ -157,10 +170,11 @@
 
                 charDiv.innerHTML = `
                     <div class="player-name">${p.name}</div>
-                    <div class="arm-line arm-left"></div>
-                    <div class="arm-line arm-right"></div>
-                    <div class="player-hands"><div class="hand"></div><div class="hand"></div></div>
+                    <div class="arm arm-1"></div>
+                    <div class="arm arm-2"></div>
                     <div class="player-head"></div>
+                    <div class="hand hand-1"></div>
+                    <div class="hand hand-2"></div>
                 `;
                 container.appendChild(charDiv);
             });
