@@ -82,6 +82,28 @@ io.on('connection', (socket) => {
         io.to(roomCode).emit('update_lobby', { players: Object.values(room.players), maxPerTeam: room.maxPerTeam });
     });
 
+    // --- เพิ่มระบบสลับทีม (Swap Team) ---
+    socket.on('swap_team', ({ roomCode, team }) => {
+        const room = rooms[roomCode];
+        if (!room || room.state !== 'waiting' || !room.players[socket.id]) return;
+        
+        if (room.players[socket.id].team === team) return; // อยู่ทีมนี้อยู่แล้ว
+
+        const teamPlayers = Object.values(room.players).filter(p => p.team === team);
+        if (teamPlayers.length >= room.maxPerTeam) {
+            return socket.emit('join_error', `ทีม ${team} เต็มโควต้าแล้ว!`);
+        }
+
+        const takenSlots = teamPlayers.map(p => p.slot);
+        let freeSlot = 0; while (takenSlots.includes(freeSlot)) freeSlot++;
+
+        room.players[socket.id].team = team;
+        room.players[socket.id].slot = freeSlot;
+
+        socket.emit('team_swapped', { team });
+        io.to(roomCode).emit('update_lobby', { players: Object.values(room.players), maxPerTeam: room.maxPerTeam });
+    });
+
     socket.on('kick_player', ({ roomCode, playerId }) => {
         const room = rooms[roomCode];
         if (room && room.players[playerId] && room.hostId === socket.id) {
@@ -119,7 +141,7 @@ io.on('connection', (socket) => {
         if (!room || !room.players[socket.id]) return;
 
         const teamPlayers = Object.values(room.players).filter(p => p.team === team);
-        if (teamPlayers.length >= room.maxPerTeam) return socket.emit('join_error', `ทีม ${team} เต็มแล้ว! (รับได้ฝั่งละ ${room.maxPerTeam} คน)`);
+        if (teamPlayers.length >= room.maxPerTeam) return socket.emit('join_error', `ทีม ${team} เต็มแล้ว!`);
 
         let freeSlot = 0; while (teamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
         room.players[socket.id].team = team; room.players[socket.id].slot = freeSlot;
