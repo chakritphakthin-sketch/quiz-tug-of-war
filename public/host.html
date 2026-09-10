@@ -39,8 +39,6 @@
         .slot-box:hover .btn-kick { display: block; }
 
         .chasm { position: absolute; left: 40%; right: 40%; height: 100%; background: #05050a; z-index: -1; }
-        
-        /* ขยับเชือกขึ้นไม่ให้บัง Slot (ปรับ top ให้น้อยลง) */
         .rope-system { position: absolute; top: 22%; left: 5%; right: 5%; height: 20px; z-index: 20; }
         
         .rope-line { width: 100%; height: 16px; background: repeating-linear-gradient(45deg, #d4a373, #d4a373 10px, #a8794d 10px, #a8794d 20px); border-radius: 10px; position: relative; box-shadow: 0 5px 10px rgba(0,0,0,0.5);}
@@ -109,7 +107,6 @@
         
         function renderEmptySlots(containerId) {
             const container = document.getElementById(containerId); container.innerHTML = '';
-            // วาด Slot ไดนามิกตามโควต้า maxPerTeam (รอบต่อไปจะหดลง)
             for (let i = 0; i < currentMaxPerTeam; i++) {
                 const box = document.createElement('div'); box.className = 'slot-box'; box.id = `${containerId}-slot-${i}`; box.innerHTML = `<span style="opacity:0.2;">${i+1}</span>`; container.appendChild(box);
             }
@@ -149,19 +146,18 @@
         socket.on('update_rope', (data) => { document.getElementById('knot').style.left = `${data.ropePosition}%`; });
 
         socket.on('round_ended_survivors', (data) => {
-            currentRoomCode = data.newRoomCode; // อัปเดตหลังบ้าน
-            currentMaxPerTeam = data.maxPerTeam; // อัปเดตจำนวน Slot สูงสุด
+            currentRoomCode = data.newRoomCode;
+            currentMaxPerTeam = data.maxPerTeam;
             
-            // ซ่อน PIN เป็น HIDDEN ป้องกันคนเข้ากลางคัน
             const pinBadge = document.getElementById('display-pin');
             pinBadge.innerText = '🔒 HIDDEN';
             pinBadge.classList.add('pin-hidden');
 
             document.getElementById('knot').style.left = '50%'; document.getElementById('timer-box').innerText = "100";
-            document.getElementById('host-q-text').innerText = `🏁 จบรอบ! ทีม ${data.winningTeam} ชนะ ผู้รอดชีวิต ${data.remainingCount} คน กำลังเลือกทีมใหม่...`;
+            document.getElementById('host-q-text').innerText = `🏁 จบรอบ! ทีม ${data.winningTeam} ชนะ ผู้รอดชีวิต ${data.remainingCount} ตัว/คน กำลังเลือกทีมใหม่...`;
             document.getElementById('start-btn').style.display = 'inline-block'; document.getElementById('start-btn').innerText = "🚀 เริ่มรอบต่อไป";
             
-            initSlots(); // เคลียร์และวาด Slot ใหม่ที่หดลง
+            initSlots();
         });
 
         socket.on('champion_declared', (data) => {
