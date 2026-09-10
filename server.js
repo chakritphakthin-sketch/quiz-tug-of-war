@@ -27,7 +27,6 @@ function generateRoomCode() {
     return code;
 }
 
-// ฟังก์ชั่นจัดทีมให้บอทอัตโนมัติ
 function autoAssignBots(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
@@ -133,7 +132,6 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
 
-        // จัดการบอทที่ยังตกค้างไม่มีทีมให้อยู่อัตโนมัติก่อนเริ่ม
         autoAssignBots(roomCode);
 
         if (Object.values(room.players).some(p => !p.team)) {
@@ -182,7 +180,6 @@ io.on('connection', (socket) => {
         
         const isCorrect = (answerIndex === questions[qIndex].answer);
         
-        // คำนวณแรงตั้งต้นที่ควรได้จากความเร็วในการตอบ (50 - 100)
         const timeTaken = Math.min(15, (Date.now() - player.qStartTime) / 1000);
         const fullPower = Math.round((50 + (50 * ((15 - timeTaken) / 15))) * 10) / 10;
         
@@ -190,12 +187,10 @@ io.on('connection', (socket) => {
         let power = 0;
 
         if (isCorrect) {
-            // ตอบถูก: ใช้แรงเต็มดึงเข้าหาฝั่งตัวเอง
             power = fullPower;
             const move = (power / 100) * (8 / divider);
             room.ropePosition += (player.team === 'RED' ? -move : move);
         } else {
-            // ตอบผิด: เสียแรง 25% ให้ฝั่งตรงข้าม (ดึงไปทิศตรงข้าม)
             power = Math.round((fullPower * 0.25) * 10) / 10;
             const move = (power / 100) * (8 / divider);
             room.ropePosition += (player.team === 'RED' ? move : -move);
@@ -225,10 +220,9 @@ io.on('connection', (socket) => {
 
         let winningTeam = room.ropePosition > 50 ? 'BLUE' : (room.ropePosition < 50 ? 'RED' : (Math.random() < 0.5 ? 'RED' : 'BLUE'));
         
-        // เตะคนแพ้และบอทแพ้ออก
         for (let id in room.players) {
             if (room.players[id].team !== winningTeam) {
-                if(!room.players[id].isBot) io.to(id).emit('eliminated', { msg: '💥 ทีมคุณแพ้! ถูกคัดออก' });
+                if(!room.players[id].isBot) io.to(id).emit('eliminated', { msg: '💥 ทีมคุณพ่ายแพ้และตกลงสู่เบื้องล่าง!' });
                 delete room.players[id];
             }
         }
@@ -250,7 +244,6 @@ io.on('connection', (socket) => {
             rooms[newRoomCode] = room;
             delete rooms[roomCode];
 
-            // เคลียร์ทีมให้ทุกคนที่รอด
             remainingPlayers.forEach(p => {
                 p.team = null;
                 p.slot = -1;
@@ -261,7 +254,6 @@ io.on('connection', (socket) => {
                 }
             });
 
-            // บอทที่รอดชีวิตจะโดนสุ่มลงทีมอัตโนมัติทันที
             autoAssignBots(newRoomCode);
 
             const hostSocket = io.sockets.sockets.get(room.hostId);
