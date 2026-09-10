@@ -18,44 +18,34 @@
         .team-blue { background: linear-gradient(180deg, #4da6ff, #0066cc); }
 
         #game-container { display: none; flex-direction: column; height: 100vh; }
-        
-        .mini-arena { flex: 0 0 40%; background: radial-gradient(circle at center, #1e1e38, #05050a); position: relative; display: flex; flex-direction: column; border-bottom: 3px solid #334155; }
+        .mini-arena { flex: 0 0 35%; background: radial-gradient(circle at center, #1e1e38, #05050a); position: relative; display: flex; flex-direction: column; border-bottom: 3px solid #334155; }
         .arena-header { display: flex; justify-content: space-between; padding: 10px 15px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 10; font-size: 1.1em; }
         
         .rope-system { position: absolute; top: 60%; left: 0; right: 0; height: 10px; }
         .rope-line { width: 100%; height: 8px; background: repeating-linear-gradient(45deg, #d4a373, #d4a373 5px, #a8794d 5px, #a8794d 10px); position: relative; }
-        .rope-knot { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 35px; height: 35px; background: #facc15; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 10px #facc15; transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); display: flex; justify-content: center; align-items: center; font-size: 1em; z-index: 20;}
-        
-        .danger-left { position: absolute; left: 0; width: 15%; height: 100%; background: linear-gradient(90deg, rgba(255,0,0,0.4), transparent); border-right: 2px dashed red; }
-        .danger-right { position: absolute; right: 0; width: 15%; height: 100%; background: linear-gradient(-90deg, rgba(0,100,255,0.4), transparent); border-left: 2px dashed #00aaff; }
+        .rope-knot { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 35px; height: 35px; background: #facc15; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 10px #facc15; transition: left 0.2s linear; display: flex; justify-content: center; align-items: center; font-size: 1em; z-index: 20;}
 
         .quiz-section { flex: 1; padding: 15px; background: #0f172a; display: flex; flex-direction: column; position: relative; }
-        .q-box { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 12px; font-size: 1.2em; font-weight: bold; margin-bottom: 15px; text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center; }
+        .q-box { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 12px; font-size: 1.1em; font-weight: bold; margin-bottom: 12px; text-align: center; min-height: 70px; display: flex; align-items: center; justify-content: center; }
         
         .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; }
-        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 15px 10px; font-size: 1.1em; font-family: 'Kanit'; font-weight: bold; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; transition: 0.2s; }
-        .choice-btn.selected { background: #facc15; color: #000; border-color: #fff; }
+        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 15px 10px; font-size: 1.05em; font-family: 'Kanit'; font-weight: bold; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; }
 
-        .floating-power { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 3em; font-weight: 900; color: #facc15; text-shadow: 0 0 20px rgba(250,204,21,0.8); opacity: 0; pointer-events: none; z-index: 100; }
+        .floating-power { position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5em; font-weight: 900; opacity: 0; pointer-events: none; z-index: 100; }
         @keyframes floatUp {
             0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); }
             20% { opacity: 1; transform: translate(-50%, -20px) scale(1.2); }
-            80% { opacity: 1; transform: translate(-50%, -60px) scale(1); }
-            100% { opacity: 0; transform: translate(-50%, -80px) scale(0.8); }
+            80% { opacity: 1; transform: translate(-50%, -50px) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -70px) scale(0.8); }
         }
 
-        #round-status { text-align: center; font-size: 1.1em; font-weight: bold; color: #facc15; padding: 5px; }
+        #round-status { text-align: center; font-size: 1.1em; font-weight: bold; color: #facc15; padding-bottom: 5px; }
     </style>
-    <script>
-        if (new URLSearchParams(window.location.search).get('admin') === 'true') {
-            window.location.href = '/host.html?admin=true';
-        }
-    </script>
 </head>
 <body>
     <div id="setup-container">
         <div class="card">
-            <h2 style="color: #38bdf8; margin-bottom: 15px;">🎮 เข้าสู่การแข่งขัน</h2>
+            <h2 style="color: #38bdf8; margin-bottom: 15px;">🎮 เลือกทีมเข้าร่วมศึก</h2>
             <input type="number" id="pin-input" placeholder="รหัส PIN 6 หลัก" maxlength="6">
             <input type="text" id="name-input" placeholder="ตั้งชื่อตัวละคร..." maxlength="12">
             <button class="btn-3d team-red" onclick="joinRoom('RED')">🔴 TEAM RED</button>
@@ -66,12 +56,9 @@
     <div id="game-container">
         <div class="mini-arena">
             <div class="arena-header">
-                <span style="color: #ff4d4d;">🔴 <span id="score-red">0</span></span>
-                <span>⏱️ <span id="timer" style="color:#facc15; font-size:1.2em;">15</span></span>
-                <span style="color: #4da6ff;"><span id="score-blue">0</span> 🔵</span>
+                <span>⚔️ ชักเย่อเรียลไทม์</span>
+                <span>⏱️ <span id="match-timer" style="color:#facc15; font-size:1.2em;">100</span>s</span>
             </div>
-            <div class="danger-left"></div>
-            <div class="danger-right"></div>
             <div class="rope-system">
                 <div class="rope-line">
                     <div class="rope-knot" id="mini-knot">⚡</div>
@@ -80,8 +67,8 @@
         </div>
 
         <div class="quiz-section">
-            <div id="round-status">รอเริ่มการแข่งขัน...</div>
-            <div class="q-box" id="q-text">กำลังโหลดโจทย์...</div>
+            <div id="round-status">ข้อที่ 1 / 15 (รัวสปีดให้ไว!)</div>
+            <div class="q-box" id="q-text">กำลังเตรียมโจทย์...</div>
             <div class="grid-choices">
                 <button class="choice-btn" id="c0" onclick="sendAns(0)">-</button>
                 <button class="choice-btn" id="c1" onclick="sendAns(1)">-</button>
@@ -95,61 +82,53 @@
     <script>
         const socket = io();
         let currentRoomCode = '';
-        let myTeam = '';
+        let currentQIndex = 0;
 
         function joinRoom(team) {
             const pin = document.getElementById('pin-input').value;
             const name = document.getElementById('name-input').value;
             if (!pin || pin.length !== 6) return alert('กรอก PIN 6 หลัก!');
             if (!name.trim()) return alert('ตั้งชื่อด้วยครับ!');
-            myTeam = team;
             currentRoomCode = pin;
             socket.emit('join_room', { roomCode: pin, name, team });
         }
 
         socket.on('join_error', (msg) => alert(msg));
-        
-        socket.on('join_success', (data) => {
+        socket.on('join_success', () => {
             document.getElementById('setup-container').style.display = 'none';
             document.getElementById('game-container').style.display = 'flex';
-            document.getElementById('round-status').innerText = '✅ เข้าห้องสำเร็จ รอ Host เริ่มเกม...';
+            document.getElementById('q-text').innerText = '✅ เข้าห้องแล้ว! รอ Host กดเริ่มศึก...';
+            disableButtons(true);
         });
 
-        socket.on('new_question', (data) => {
-            document.getElementById('round-status').innerText = `รอบที่ ${data.round} / ${data.maxRounds}`;
-            document.getElementById('score-red').innerText = data.redWins;
-            document.getElementById('score-blue').innerText = data.blueWins;
-            document.getElementById('q-text').innerText = data.questionData.q;
-            document.getElementById('mini-knot').style.left = '50%';
-            
+        socket.on('start_player_stream', (data) => {
+            currentQIndex = data.qIndex;
+            loadQuestion(data.qData, data.qIndex, data.totalQuestions);
+        });
+
+        function loadQuestion(qData, qIndex, total) {
+            document.getElementById('round-status').innerText = `ข้อที่ ${qIndex + 1} / ${total} (รัวสปีดเลย!)`;
+            document.getElementById('q-text').innerText = qData.q;
             for (let i = 0; i < 4; i++) {
                 const btn = document.getElementById(`c${i}`);
-                btn.innerText = data.questionData.choices[i];
+                btn.innerText = qData.choices[i];
                 btn.disabled = false;
-                btn.className = 'choice-btn';
             }
-        });
-
-        socket.on('timer_tick', (t) => {
-            document.getElementById('timer').innerText = t;
-        });
-
-        socket.on('update_rope', (data) => {
-            document.getElementById('mini-knot').style.left = `${data.ropePosition}%`;
-        });
-
-        function sendAns(idx) {
-            socket.emit('submit_answer', { roomCode: currentRoomCode, answerIndex: idx });
-            for (let i = 0; i < 4; i++) {
-                document.getElementById(`c${i}`).disabled = true;
-            }
-            document.getElementById(`c${idx}`).classList.add('selected');
         }
 
-        socket.on('answer_result_mini', (data) => {
+        function disableButtons(status) {
+            for (let i = 0; i < 4; i++) document.getElementById(`c${i}`).disabled = status;
+        }
+
+        function sendAns(idx) {
+            disableButtons(true);
+            socket.emit('submit_answer_fast', { roomCode: currentRoomCode, qIndex: currentQIndex, answerIndex: idx });
+        }
+
+        socket.on('answer_feedback', (data) => {
             const floatEl = document.getElementById('float-power');
             if (data.isCorrect) {
-                floatEl.innerText = `💪 +${data.power}`;
+                floatEl.innerText = `💥 ดึง! +${data.power}`;
                 floatEl.style.color = '#00ffcc';
             } else {
                 floatEl.innerText = `❌ พลาด!`;
@@ -157,21 +136,25 @@
             }
             floatEl.style.animation = 'none';
             void floatEl.offsetWidth; 
-            floatEl.style.animation = 'floatUp 1.5s ease-out forwards';
+            floatEl.style.animation = 'floatUp 0.8s ease-out forwards';
+
+            currentQIndex = data.nextQIndex;
+            loadQuestion(data.nextQData, currentQIndex, 15);
         });
 
-        socket.on('question_end', (data) => {
+        socket.on('timer_tick', (t) => { document.getElementById('match-timer').innerText = t; });
+        socket.on('update_rope', (data) => { document.getElementById('mini-knot').style.left = `${data.ropePosition}%`; });
+
+        socket.on('match_ended', (data) => {
             document.getElementById('q-text').innerText = data.detail;
-            document.getElementById('score-red').innerText = data.redWins;
-            document.getElementById('score-blue').innerText = data.blueWins;
-            for (let i = 0; i < 4; i++) {
-                document.getElementById(`c${i}`).disabled = true;
-            }
+            document.getElementById('round-status').innerText = '🏁 จบศึกชักเย่อ!';
+            disableButtons(true);
         });
 
-        socket.on('game_over', (data) => {
-            document.getElementById('round-status').innerText = "🏁 จบการแข่งขัน!";
-            document.getElementById('q-text').innerText = `🔴 ทีมแดงชนะ ${data.redWins} ตา\n🔵 ทีมน้ำเงินชนะ ${data.blueWins} ตา`;
+        socket.on('return_to_lobby', () => {
+            document.getElementById('q-text').innerText = '🔄 กลับสู่ Lobby เตรียมจัดทีมรอบต่อไป!';
+            document.getElementById('round-status').innerText = 'รอ Host เริ่มรอบใหม่...';
+            disableButtons(true);
         });
     </script>
 </body>
