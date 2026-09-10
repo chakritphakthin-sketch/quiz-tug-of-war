@@ -92,9 +92,9 @@
         let currentQIndex = 0;
 
         function setPlayerColor(team) {
-            if (team === 'RED') document.body.style.background = '#7f1d1d'; // Dark Red
-            else if (team === 'BLUE') document.body.style.background = '#1e3a8a'; // Dark Blue
-            else document.body.style.background = '#0f172a'; // Default Dark
+            if (team === 'RED') document.body.style.background = '#7f1d1d';
+            else if (team === 'BLUE') document.body.style.background = '#1e3a8a';
+            else document.body.style.background = '#0f172a';
         }
 
         function hideAll() { 
@@ -129,12 +129,11 @@
             resetToSetup(); 
         }
 
-        // เมื่อรอดชีวิตเข้ารอบ
         socket.on('survived_round', (data) => {
-            currentRoomCode = data.newRoomCode; // อัปเดตรหัสห้องใหม่เงียบๆ
-            setPlayerColor(null); // รีเซ็ตสีกลับเป็นปกติ
+            currentRoomCode = data.newRoomCode;
+            setPlayerColor(null);
             hideAll(); document.getElementById('screen-reselect').style.display = 'flex';
-            document.getElementById('survivor-count-txt').innerText = `เหลือคนในห้องทั้งหมด: ${data.remainingCount} คน`;
+            document.getElementById('survivor-count-txt').innerText = `เหลือผู้รอดชีวิตรวมบอท: ${data.remainingCount} ตัว/คน`;
             document.getElementById('max-slot-txt').innerText = `(จำกัดโควต้าทีมละไม่เกิน ${data.maxPerTeam} คน)`;
             document.getElementById('reselect-status').style.display = 'none';
             document.getElementById('re-btn-red').style.display = 'block'; document.getElementById('re-btn-blue').style.display = 'block';
@@ -142,9 +141,8 @@
 
         function selectTeamNextRound(team) { socket.emit('select_team_next_round', { roomCode: currentRoomCode, team }); }
         
-        // เลือกทีมใหม่สำเร็จ
         socket.on('team_selected_success', (data) => {
-            setPlayerColor(data.team); // เปลี่ยนสีฉากหลัง
+            setPlayerColor(data.team);
             document.getElementById('re-btn-red').style.display = 'none'; document.getElementById('re-btn-blue').style.display = 'none';
             document.getElementById('reselect-status').style.display = 'block';
         });
