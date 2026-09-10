@@ -15,7 +15,8 @@
 
         #arena-screen { display: none; flex-direction: column; height: 100vh; }
         .header { background: rgba(0, 0, 0, 0.6); padding: 10px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(255,255,255,0.1); }
-        .pin-badge { font-family: 'Orbitron'; font-size: 2em; color: #facc15; background: rgba(250,204,21,0.1); padding: 5px 15px; border-radius: 12px; border: 2px solid #facc15; }
+        .pin-badge { font-family: 'Orbitron'; font-size: 2em; color: #facc15; background: rgba(250,204,21,0.1); padding: 5px 15px; border-radius: 12px; border: 2px solid #facc15; min-width: 150px; text-align: center;}
+        .pin-hidden { color: #94a3b8; border-color: #64748b; background: rgba(100,116,139,0.1); font-family: 'Kanit'; }
 
         .btn-start { padding: 10px 25px; font-size: 1.3em; font-weight: 900; background: linear-gradient(90deg, #00c6ff, #0072ff); color: white; border: none; border-radius: 12px; cursor: pointer; }
 
@@ -24,23 +25,26 @@
         .host-quiz-panel { background: rgba(255,255,255,0.05); border: 2px dashed #facc15; margin: 10px 20px; padding: 12px 20px; border-radius: 16px; text-align: center; }
         
         .stage { flex: 1; display: flex; position: relative; }
-        .cliff { width: 38%; height: 70%; position: absolute; bottom: 0; padding: 15px; display: flex; flex-direction: column; }
-        .cliff-left { left: 0; background: linear-gradient(160deg, #ff2a5f, #7a001c); border-radius: 0 50px 0 0; }
-        .cliff-right { right: 0; background: linear-gradient(-160deg, #00d2ff, #003a7a); border-radius: 50px 0 0 0; }
+        .cliff { width: 40%; height: 70%; position: absolute; bottom: 0; padding: 15px; display: flex; flex-direction: column; }
+        .cliff-left { left: 0; background: linear-gradient(160deg, #b91c1c, #7f1d1d); border-radius: 0 50px 0 0; }
+        .cliff-right { right: 0; background: linear-gradient(-160deg, #0284c7, #0f172a); border-radius: 50px 0 0 0; }
 
         .team-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;}
-        .btn-add-bot { background: #10b981; color: white; border: none; padding: 5px 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.8em; }
+        .btn-add-bot { background: rgba(0,0,0,0.5); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 5px 10px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.8em; }
 
-        .grid-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+        .grid-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; align-content: start;}
         .slot-box { background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2); border-radius: 8px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.8em; position: relative; }
-        .slot-box.filled { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.4); }
+        .slot-box.filled { background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.4); }
         .btn-kick { position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7em; cursor: pointer; display: none; }
         .slot-box:hover .btn-kick { display: block; }
 
-        .chasm { position: absolute; left: 38%; right: 38%; height: 100%; background: #05050a; z-index: -1; }
-        .rope-system { position: absolute; top: 40%; left: 5%; right: 5%; height: 20px; z-index: 20; }
-        .rope-line { width: 100%; height: 14px; background: repeating-linear-gradient(45deg, #d4a373, #d4a373 10px, #a8794d 10px, #a8794d 20px); border-radius: 10px; position: relative; }
-        .rope-knot { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 44px; height: 44px; background: #facc15; border-radius: 50%; border: 3px solid #fff; display: flex; align-items: center; justify-content: center; transition: left 0.2s linear;}
+        .chasm { position: absolute; left: 40%; right: 40%; height: 100%; background: #05050a; z-index: -1; }
+        
+        /* ขยับเชือกขึ้นไม่ให้บัง Slot (ปรับ top ให้น้อยลง) */
+        .rope-system { position: absolute; top: 22%; left: 5%; right: 5%; height: 20px; z-index: 20; }
+        
+        .rope-line { width: 100%; height: 16px; background: repeating-linear-gradient(45deg, #d4a373, #d4a373 10px, #a8794d 10px, #a8794d 20px); border-radius: 10px; position: relative; box-shadow: 0 5px 10px rgba(0,0,0,0.5);}
+        .rope-knot { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); width: 50px; height: 50px; background: #facc15; border-radius: 50%; border: 3px solid #fff; display: flex; align-items: center; justify-content: center; transition: left 0.2s linear; box-shadow: 0 0 15px #facc15;}
     </style>
 </head>
 <body>
@@ -58,7 +62,7 @@
         <div class="stage">
             <div class="cliff cliff-left">
                 <div class="team-header">
-                    <h2>🔴 RED (<span id="red-count">0</span>)</h2>
+                    <h2>🔴 RED (<span id="red-count">0</span> / <span class="max-limit">16</span>)</h2>
                     <button class="btn-add-bot" onclick="addBot('RED')">🤖 +Bot</button>
                 </div>
                 <div class="grid-slots" id="red-slots"></div>
@@ -68,7 +72,7 @@
             <div class="cliff cliff-right">
                 <div class="team-header">
                     <button class="btn-add-bot" onclick="addBot('BLUE')">🤖 +Bot</button>
-                    <h2>BLUE 🔵 (<span id="blue-count">0</span>)</h2>
+                    <h2>BLUE 🔵 (<span id="blue-count">0</span> / <span class="max-limit">16</span>)</h2>
                 </div>
                 <div class="grid-slots" id="blue-slots"></div>
             </div>
@@ -81,11 +85,14 @@
             document.getElementById('lock-screen').style.display = 'none'; document.getElementById('create-screen').style.display = 'flex';
         }
 
-        const socket = io(); let currentRoomCode = '';
+        const socket = io(); 
+        let currentRoomCode = '';
+        let currentMaxPerTeam = 16;
 
         function createRoom() { socket.emit('create_room'); }
         socket.on('room_created', (data) => {
             currentRoomCode = data.roomCode;
+            currentMaxPerTeam = data.maxPerTeam;
             document.getElementById('create-screen').style.display = 'none';
             document.getElementById('arena-screen').style.display = 'flex';
             document.getElementById('display-pin').innerText = currentRoomCode;
@@ -95,16 +102,23 @@
         function addBot(team) { socket.emit('add_bot', { roomCode: currentRoomCode, team }); }
         function kickPlayer(playerId) { socket.emit('kick_player', { roomCode: currentRoomCode, playerId }); }
 
-        function initSlots() { renderEmptySlots('red-slots'); renderEmptySlots('blue-slots'); }
+        function initSlots() { 
+            renderEmptySlots('red-slots'); renderEmptySlots('blue-slots'); 
+            document.querySelectorAll('.max-limit').forEach(el => el.innerText = currentMaxPerTeam);
+        }
+        
         function renderEmptySlots(containerId) {
             const container = document.getElementById(containerId); container.innerHTML = '';
-            for (let i = 0; i < 16; i++) {
+            // วาด Slot ไดนามิกตามโควต้า maxPerTeam (รอบต่อไปจะหดลง)
+            for (let i = 0; i < currentMaxPerTeam; i++) {
                 const box = document.createElement('div'); box.className = 'slot-box'; box.id = `${containerId}-slot-${i}`; box.innerHTML = `<span style="opacity:0.2;">${i+1}</span>`; container.appendChild(box);
             }
         }
 
         socket.on('update_lobby', (data) => {
-            initSlots(); let redNum = 0, blueNum = 0;
+            if(data.maxPerTeam) currentMaxPerTeam = data.maxPerTeam;
+            initSlots(); 
+            let redNum = 0, blueNum = 0;
             data.players.forEach(p => {
                 if (!p.team) return;
                 const prefix = p.team === 'RED' ? 'red-slots' : 'blue-slots';
@@ -115,7 +129,7 @@
                     slotBox.innerHTML = `
                         <button class="btn-kick" onclick="kickPlayer('${p.id}')">❌</button>
                         <div>${icon}</div>
-                        <div style="font-weight:bold; font-size:0.9em;">${p.name}</div>
+                        <div style="font-weight:bold; font-size:0.9em; white-space:nowrap; overflow:hidden; width:100%; text-overflow:ellipsis; text-align:center;">${p.name}</div>
                     `;
                 }
                 if (p.team === 'RED') redNum++; if (p.team === 'BLUE') blueNum++;
@@ -125,6 +139,7 @@
 
         function startMatch() { socket.emit('start_match', { roomCode: currentRoomCode }); }
         socket.on('start_error', (msg) => alert(msg));
+        
         socket.on('match_started', () => {
             document.getElementById('start-btn').style.display = 'none'; document.getElementById('knot').style.left = '50%';
             document.getElementById('host-q-text').innerText = "🔥 การต่อสู้เริ่มขึ้นแล้ว! 🔥";
@@ -134,9 +149,19 @@
         socket.on('update_rope', (data) => { document.getElementById('knot').style.left = `${data.ropePosition}%`; });
 
         socket.on('round_ended_survivors', (data) => {
+            currentRoomCode = data.newRoomCode; // อัปเดตหลังบ้าน
+            currentMaxPerTeam = data.maxPerTeam; // อัปเดตจำนวน Slot สูงสุด
+            
+            // ซ่อน PIN เป็น HIDDEN ป้องกันคนเข้ากลางคัน
+            const pinBadge = document.getElementById('display-pin');
+            pinBadge.innerText = '🔒 HIDDEN';
+            pinBadge.classList.add('pin-hidden');
+
             document.getElementById('knot').style.left = '50%'; document.getElementById('timer-box').innerText = "100";
-            document.getElementById('host-q-text').innerText = `🏁 จบรอบ! ทีม ${data.winningTeam} ชนะ รอผู้รอดชีวิตเลือกทีมใหม่...`;
+            document.getElementById('host-q-text').innerText = `🏁 จบรอบ! ทีม ${data.winningTeam} ชนะ ผู้รอดชีวิต ${data.remainingCount} คน กำลังเลือกทีมใหม่...`;
             document.getElementById('start-btn').style.display = 'inline-block'; document.getElementById('start-btn').innerText = "🚀 เริ่มรอบต่อไป";
+            
+            initSlots(); // เคลียร์และวาด Slot ใหม่ที่หดลง
         });
 
         socket.on('champion_declared', (data) => {
