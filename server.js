@@ -13,7 +13,7 @@ const ROUND_TIME = 60;
 const rooms = {};
 
 // --- ชุดคำถามแยกตามรอบ ---
-const questionsRound1 = [ // 16v16
+const questionsRound1 = [
     { q: "1. ค่าความดันโลหิตปกติในผู้ใหญ่ควรน้อยกว่าเท่าใด?", choices: ["140/90 มม.ปรอท", "120/80 มม.ปรอท"], answer: 1 },
     { q: "2. ความดันโลหิตตัวบน (Systolic) หมายถึงค่าใด?", choices: ["แรงดันขณะหัวใจบีบตัว", "แรงดันขณะหัวใจคลายตัว"], answer: 0 },
     { q: "3. อาหารประเภทใดส่งผลให้ความดันโลหิตสูงขึ้นมากที่สุด?", choices: ["อาหารรสหวานจัด", "อาหารรสเค็มจัด (โซเดียมสูง)"], answer: 1 },
@@ -25,8 +25,7 @@ const questionsRound1 = [ // 16v16
     { q: "9. ภาวะแทรกซ้อนอันตรายที่เกิดจากความดันโลหิตสูงเรื้อรังคือข้อใด?", choices: ["โรคหลอดเลือดสมองและหัวใจ", "โรคภูมิแพ้อากาศ"], answer: 0 },
     { q: "10. เครื่องปรุงรสในข้อใดมีโซเดียมสูง ซึ่งผู้ป่วยความดันสูงควรหลีกเลี่ยง?", choices: ["น้ำมันพืช", "ผงชูรสและซีอิ๊ว"], answer: 1 }
 ];
-
-const questionsRound2 = [ // 8v8
+const questionsRound2 = [
     { q: "11. ท่าทางการนั่งวัดความดันโลหิตที่ถูกต้องคือข้อใด?", choices: ["นั่งไขว่ห้างและเกร็งตัว", "นั่งหลังตรงและวางแขนให้อยู่ระดับหัวใจ"], answer: 1 },
     { q: "12. ภาวะน้ำหนักเกินหรืออ้วนส่งผลอย่างไรต่อความดันโลหิต?", choices: ["ทำให้ความดันโลหิตมีแนวโน้มสูงขึ้น", "ช่วยให้ความดันโลหิตลดลงสู่เกณฑ์ปกติ"], answer: 0 },
     { q: "13. การนอนหลับพักผ่อนไม่เพียงพอส่งผลอย่างไรต่อร่างกาย?", choices: ["อาจทำให้ความดันโลหิตสูงขึ้นได้", "ทำให้ความดันโลหิตคงที่ตลอดวัน"], answer: 0 },
@@ -38,8 +37,7 @@ const questionsRound2 = [ // 8v8
     { q: "19. เมื่ออายุมากขึ้น ความยืดหยุ่นของหลอดเลือดลดลง จะส่งผลอย่างไร?", choices: ["เพิ่มความเสี่ยงต่อการเกิดโรคความดันโลหิตสูง", "ทำให้ความดันโลหิตลดต่ำลงเรื่อยๆ"], answer: 0 },
     { q: "20. การดื่มเครื่องดื่มแอลกอฮอล์ปริมาณมากส่งผลอย่างไรต่อความดันโลหิต?", choices: ["ส่งผลให้ความดันโลหิตสูงขึ้น", "ช่วยให้หลอดเลือดแข็งแรงและดันโลหิตต่ำลง"], answer: 0 }
 ];
-
-const questionsRound3 = [ // 4v4
+const questionsRound3 = [
     { q: "ข้อ 1. ค่าความดันโลหิต 'ตัวล่าง' (Diastolic) แสดงถึงแรงดันเลือดในภาวะใด?", choices: ["ขณะหัวใจบีบตัว", "ขณะหัวใจคลายตัว"], answer: 1 },
     { q: "ข้อ 2. ยาประหยัดโซเดียมหรือผงชูรสผงนัว มีส่วนประกอบของอะไรที่ทำให้ความดันสูงขึ้น?", choices: ["โซเดียม (Sodium)", "โพแทสเซียม (Potassium)"], answer: 0 },
     { q: "ข้อ 3. 'ภาวะความดันโลหิตสูงแอบแฝง' (White Coat Hypertension) คืออาการอย่างไร?", choices: ["ความดันสูงเฉพาะเวลาเจอหมอ/วัดที่โรงพยาบาล", "ความดันสูงเฉพาะช่วงเวลาตื่นนอนตอนเช้า"], answer: 0 },
@@ -48,24 +46,22 @@ const questionsRound3 = [ // 4v4
     { q: "ข้อ 6. เครื่องดื่มแอลกอฮอล์ส่งผลต่อระดับความดันโลหิตอย่างไร?", choices: ["หากดื่มปริมาณมากเป็นประจำจะทำให้ความดันพุ่งสูงขึ้น", "ช่วยขยายหลอดเลือดและทำให้ความดันลดลงอย่างยั่งยืน"], answer: 0 },
     { q: "ข้อ 7. ผู้ที่มีภาวะหยุดหายใจขณะหลับจากการอุดกั้น (Snoring/Sleep Apnea) มีความเสี่ยงต่อความดันโลหิตสูงหรือไม่?", choices: ["มีความเสี่ยงสูง เพราะร่างกายขาดออกซิเจนเป็นช่วงๆ ทำให้ความดันพุ่งสูงตอนกลางคืน", "ไม่มีความเสี่ยง เพราะความดันจะลดลงเสมอขณะนอนหลับ"], answer: 0 },
     { q: "ข้อ 8. ปริมาณโซเดียมที่องค์การอนามัยโลก (WHO) แนะนำให้บริโภคไม่เกินต่อวันคือเท่าใด?", choices: ["ไม่เกิน 2,000 มิลลิกรัม (เกลือประมาณ 1 ช้อนชา)", "ไม่เกิน 5,000 มิลลิกรัม (เกลือประมาณ 1 ช้อนโต๊ะ)"], answer: 0 },
-    { q: "ข้อ 9. แร่ธาตุชนิดใดในอาหาร (เช่น บานาน่า/ผักใบเขียว) ที่ช่วยขับโซเดียมและลดความดันโลหิตได้ดี?", choices: ["แคลเซียม", "โพแทสเซียม"], answer: 1 },
+    { q: "ข้อ 9. แร่ธาตุชนิดใดในอาหาร ที่ช่วยขับโซเดียมและลดความดันโลหิตได้ดี?", choices: ["แคลเซียม", "โพแทสเซียม"], answer: 1 },
     { q: "ข้อ 10. ก่อนทำการวัดความดันโลหิต ไม่ควรกินกาแฟหรือดื่มชาล่วงหน้ากี่นาที?", choices: ["อย่างน้อย 30 นาที", "ไม่ต้องเว้นระยะ สามารถดื่มแล้ววัดได้ทันที"], answer: 0 }
 ];
-
-const questionsRound4 = [ // 2v2
+const questionsRound4 = [
     { q: "ข้อ 11. ขณะทำการวัดความดันโลหิต ตำแหน่งของแขนและปลอกแขน (Cuff) ควรอยู่ที่ระดับใด?", choices: ["ระดับเดียวกับหัวใจ", "วางต่ำกว่าระดับหัวใจลงไปที่หน้าตัก"], answer: 0 },
     { q: "ข้อ 12. หากวัดความดันโลหิตได้ค่า 140/90 mmHg ถือว่าอยู่ในเกณฑ์ใด?", choices: ["ความดันโลหิตสูง (Stage 1)", "ความดันโลหิตปกติสมบูรณ์แบบ"], answer: 0 },
-    { q: "ข้อ 13. อาหารรูปแบบ DASH Diet (Dietary Approaches to Stop Hypertension) เน้นทานอะไรเป็นหลัก?", choices: ["ผัก ผลไม้ ธัญพืช ถั่ว และเนื้อสัตว์ไขมันต่ำ", "เน้นทานแป้งขัดขาว ผัดน้ำมันทอด และเนื้อสัตว์ติดมัน"], answer: 0 },
+    { q: "ข้อ 13. อาหารรูปแบบ DASH Diet เน้นทานอะไรเป็นหลัก?", choices: ["ผัก ผลไม้ ธัญพืช ถั่ว และเนื้อสัตว์ไขมันต่ำ", "เน้นทานแป้งขัดขาว ผัดน้ำมันทอด และเนื้อสัตว์ติดมัน"], answer: 0 },
     { q: "ข้อ 14. โรคความดันโลหิตสูงส่วนใหญ่ (มากกว่า 90%) เป็นประเภทใด?", choices: ["ไม่ทราบสาเหตุแน่ชัด (Primary/Essential Hypertension)", "มีสาเหตุมาจากเนื้องอกในสมองโดยตรง"], answer: 0 },
     { q: "ข้อ 15. ภาวะน้ำหนักตัวเกินหรืออ้วน ส่งผลต่อความดันโลหิตอย่างไร?", choices: ["ทำให้หัวใจต้องสูบฉีดเลือดไปเลี้ยงร่างกายมากขึ้น ความดันจึงสูงขึ้น", "ช่วยให้หลอดเลือดขยายตัวได้กว้างขึ้น ทำให้ความดันลดลง"], answer: 0 },
-    { q: "ข้อ 16. การนอนหลับพักผ่อนไม่เพียงพอ (น้อยกว่า 6 ชั่วโมงต่อคืน) ส่งผลต่อความดันอย่างไร?", choices: ["กระตุ้นระบบประสาทซิมพาเทติก ทำให้ความดันและหัวใจทำงานหนักขึ้น", "ช่วยให้หลอดเลือดได้คลายตัว ความดันจึงต่ำลง"], answer: 0 },
-    { q: "ข้อ 17. ผู้ป่วยความดันสูงที่ทานยาลดความดันเป็นประจำ สามารถซื้อยามโนราห์/ยาแก้ปวดกลุ่ม NSAIDs (เช่น ไอบูโพรเฟน) ทานเองได้หรือไม่?", choices: ["ควรระวังและปรึกษาเภสัชกร เพราะยาแก้ปวดกลุ่มนี้อาจทำให้ความดันสูงขึ้นและต้านฤทธิ์ยาลดความดัน", "ทานได้เสรี เพราะยาแก้ปวดไม่มีผลต่อระบบหลอดเลือดและหัวใจ"], answer: 0 },
-    { q: "ข้อ 18. เส้นประสาทตาและจอตา (Retina) สามารถได้รับความเสียหายจากโรคความดันโลหิตสูงได้หรือไม่?", choices: ["ได้ อาจเกิดภาวะจอประสาทตาเสื่อมจากความดันสูง (Hypertensive Retinopathy)", "ไม่ได้ ดวงตาเป็นอวัยวะที่ไม่เกี่ยวกับแรงดันเลือด"], answer: 0 },
+    { q: "ข้อ 16. การนอนหลับพักผ่อนไม่เพียงพอ ส่งผลต่อความดันอย่างไร?", choices: ["กระตุ้นระบบประสาทซิมพาเทติก ทำให้ความดันและหัวใจทำงานหนักขึ้น", "ช่วยให้หลอดเลือดได้คลายตัว ความดันจึงต่ำลง"], answer: 0 },
+    { q: "ข้อ 17. ผู้ป่วยความดันสูงที่ทานยา สามารถซื้อยาแก้ปวดกลุ่ม NSAIDs ทานเองได้หรือไม่?", choices: ["ควรระวังและปรึกษาเภสัชกร เพราะยาอาจทำให้ความดันสูงขึ้น", "ทานได้เสรี เพราะไม่มีผลต่อระบบหลอดเลือดและหัวใจ"], answer: 0 },
+    { q: "ข้อ 18. เส้นประสาทตาและจอตา (Retina) สามารถได้รับความเสียหายจากความดันโลหิตสูงหรือไม่?", choices: ["ได้ อาจเกิดภาวะจอประสาทตาเสื่อมจากความดันสูง", "ไม่ได้ ดวงตาเป็นอวัยวะที่ไม่เกี่ยวกับแรงดันเลือด"], answer: 0 },
     { q: "ข้อ 19. ในผู้สูงอายุ มักพบภาวะความดันโลหิตสูงชนิดใดบ่อยที่สุด?", choices: ["ความดันตัวบนสูงอย่างเดียว (Isolated Systolic Hypertension)", "ความดันตัวล่างสูงอย่างเดียว"], answer: 0 },
-    { q: "ข้อ 20. ข้อใดคือความเข้าใจผิดที่อันตรายที่สุดเกี่ยวกับโรคความดันโลหิตสูง?", choices: ["\"ถ้าไม่มีอาการปวดหัว มึนหัว แสดงว่าความดันปกติ ไม่จำเป็นต้องกินยา\"", "\"ต้องวัดความดันเป็นประจำแม้วันที่รู้สึกสบายดี\""], answer: 0 }
+    { q: "ข้อ 20. ข้อใดคือความเข้าใจผิดที่อันตรายที่สุดเกี่ยวกับโรคความดันโลหิตสูง?", choices: ["\"ถ้าไม่มีอาการปวดหัว แสดงว่าความดันปกติ ไม่จำเป็นต้องกินยา\"", "\"ต้องวัดความดันเป็นประจำแม้วันที่รู้สึกสบายดี\""], answer: 0 }
 ];
-
-const questionsRound5Raw = [ // 1v1 (สุ่มสลับคำตอบ)
+const questionsRound5Raw = [
     { q: "1. คนเป็นโรคความดันโลหิตสูง ถ้าอาการกำเริบต้องรีบไปที่ไหน?", correct: "โรงพยาบาล", wrong: "วัด" },
     { q: "2. ทำไมหมอถึงบอกว่าความดันโลหิตสูงเปรียบเหมือน 'ความรัก'?", correct: "เพราะไม่มีสัญญาณเตือนล่วงหน้า", wrong: "เพราะยิ่งใกล้ ยิ่งใจสั่น" },
     { q: "3. ยารักษาความดันโลหิต ยี่ห้อไหนกินแล้วความดันลดไวที่สุด?", correct: "ยาตามสั่งแพทย์", wrong: "ยา 3 ชั้น" },
@@ -78,28 +74,43 @@ const questionsRound5Raw = [ // 1v1 (สุ่มสลับคำตอบ)
     { q: "10. ทำไมคนเป็นความดันโลหิตสูงไม่ควรออกกำลังกายหนัก ?", correct: "เพราะจะทำให้ความดันพุ่งสูง", wrong: "เพราะมันเหนื่อย" }
 ];
 
-function getRandomQuestion(roundNumber) {
-    if (roundNumber === 1) return questionsRound1[Math.floor(Math.random() * questionsRound1.length)];
-    if (roundNumber === 2) return questionsRound2[Math.floor(Math.random() * questionsRound2.length)];
-    if (roundNumber === 3) return questionsRound3[Math.floor(Math.random() * questionsRound3.length)];
-    if (roundNumber === 4) return questionsRound4[Math.floor(Math.random() * questionsRound4.length)];
-
-    // รอบ 5 ขึ้นไป (1v1): สุ่มสลับตำแหน่ง ก กับ ข
-    const raw = questionsRound5Raw[Math.floor(Math.random() * questionsRound5Raw.length)];
-    const isCorrectFirst = Math.random() < 0.5;
-    return {
-        q: raw.q,
-        choices: isCorrectFirst ? [raw.correct, raw.wrong] : [raw.wrong, raw.correct],
-        answer: isCorrectFirst ? 0 : 1
-    };
+function getBaseQuestions(roundNumber) {
+    if (roundNumber === 1) return [...questionsRound1];
+    if (roundNumber === 2) return [...questionsRound2];
+    if (roundNumber === 3) return [...questionsRound3];
+    if (roundNumber === 4) return [...questionsRound4];
+    return [...questionsRound5Raw];
 }
 
-function getTargetCapacity(roundNumber) {
-    if (roundNumber === 1) return 16;
-    if (roundNumber === 2) return 8;
-    if (roundNumber === 3) return 4;
-    if (roundNumber === 4) return 2;
-    return 1; // 1v1
+// ฟังก์ชันสับไพ่
+function shuffleArray(array) {
+    let curId = array.length;
+    while (0 !== curId) {
+        let randId = Math.floor(Math.random() * curId);
+        curId -= 1;
+        let tmp = array[curId];
+        array[curId] = array[randId];
+        array[randId] = tmp;
+    }
+    return array;
+}
+
+// ระบบดึงคำถามแบบกอง (ดึงทีละใบจนหมดแล้วค่อยสับใหม่)
+function getNextQuestionForPlayer(player, roundNumber) {
+    if (!player.questionBag || player.questionBag.length === 0) {
+        player.questionBag = shuffleArray(getBaseQuestions(roundNumber));
+    }
+    const qRaw = player.questionBag.pop();
+
+    if (roundNumber >= 5) { // 1v1 (สุ่มสลับคำตอบ)
+        const isCorrectFirst = Math.random() < 0.5;
+        return {
+            q: qRaw.q,
+            choices: isCorrectFirst ? [qRaw.correct, qRaw.wrong] : [qRaw.wrong, qRaw.correct],
+            answer: isCorrectFirst ? 0 : 1
+        };
+    }
+    return qRaw;
 }
 
 function generateRoomCode() {
@@ -111,23 +122,23 @@ function generateRoomCode() {
 io.on('connection', (socket) => {
     socket.on('create_room', () => {
         const roomCode = generateRoomCode();
-        rooms[roomCode] = { hostId: socket.id, players: {}, state: 'waiting', ropePosition: 50, botCount: 0, roundNumber: 1 };
+        // allowedPerTeam เริ่มต้น 16 คนสำหรับรอบแรก
+        rooms[roomCode] = { hostId: socket.id, players: {}, state: 'waiting', ropePosition: 50, botCount: 0, roundNumber: 1, allowedPerTeam: 16 };
         socket.join(roomCode);
         socket.emit('room_created', { roomCode });
     });
 
     socket.on('join_room', ({ roomCode, name, team }) => {
         const room = rooms[roomCode];
-        if (!room || room.state !== 'waiting') return socket.emit('join_error', 'ไม่สามารถเข้าร่วมได้ในขณะนี้!');
+        if (!room || room.state !== 'waiting') return socket.emit('join_error', 'ห้องเริ่มแข่งไปแล้ว หรือไม่มีอยู่จริง!');
 
-        const maxPerTeam = getTargetCapacity(room.roundNumber);
         const teamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
-        if (teamPlayers.length >= maxPerTeam) return socket.emit('join_error', `ทีมเต็มแล้ว! (รับสูงสุด ${maxPerTeam} คน)`);
+        if (teamPlayers.length >= room.allowedPerTeam) return socket.emit('join_error', `ทีมเต็มแล้ว! (รับสูงสุด ${room.allowedPerTeam} คนต่อทีม)`);
 
         let freeSlot = 0;
         while (teamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
 
-        room.players[socket.id] = { id: socket.id, name: name.trim() || 'Player', team, slot: freeSlot, status: 'active', isBot: false };
+        room.players[socket.id] = { id: socket.id, name: name.trim() || 'Player', team, slot: freeSlot, status: 'active', isBot: false, questionBag: [] };
         socket.join(roomCode);
         socket.emit('join_success', { name: room.players[socket.id].name, team, slot: freeSlot, roomCode });
         updateLobby(roomCode);
@@ -139,9 +150,8 @@ io.on('connection', (socket) => {
         const player = room.players[socket.id];
         if (!player || player.team === targetTeam) return;
 
-        const maxPerTeam = getTargetCapacity(room.roundNumber);
         const targetTeamPlayers = Object.values(room.players).filter(p => p.team === targetTeam && p.status === 'active');
-        if (targetTeamPlayers.length >= maxPerTeam) return socket.emit('join_error', `ทีมเต็ม!`);
+        if (targetTeamPlayers.length >= room.allowedPerTeam) return socket.emit('join_error', `ทีมเต็ม!`);
 
         let freeSlot = 0;
         while (targetTeamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
@@ -160,17 +170,18 @@ io.on('connection', (socket) => {
         let freeSlot = 0;
         while (Object.values(room.players).filter(p => p.team === team && p.status === 'active').map(p => p.slot).includes(freeSlot)) freeSlot++;
 
-        player.team = team; player.slot = freeSlot; player.status = 'active';
+        player.team = team; player.slot = freeSlot; player.status = 'active'; player.questionBag = []; // รีเซ็ตซองคำถาม
         socket.emit('join_success', { name: player.name, team, slot: freeSlot, roomCode });
         updateLobby(roomCode);
     });
 
+    // โฮสต์เพิ่มบอท
     socket.on('add_bot', ({ roomCode, team }) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id || room.state !== 'waiting') return;
-        const maxPerTeam = getTargetCapacity(room.roundNumber);
+        
         const teamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
-        if (teamPlayers.length >= maxPerTeam) return;
+        if (teamPlayers.length >= room.allowedPerTeam) return;
 
         let freeSlot = 0;
         while (teamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
@@ -181,37 +192,33 @@ io.on('connection', (socket) => {
         updateLobby(roomCode);
     });
 
+    // โฮสต์เตะผู้เล่น/บอท
+    socket.on('kick_player', ({ roomCode, targetId }) => {
+        const room = rooms[roomCode];
+        if (!room || room.hostId !== socket.id) return;
+        
+        if (room.players[targetId]) {
+            if (!room.players[targetId].isBot) {
+                io.to(targetId).emit('kicked');
+            }
+            delete room.players[targetId];
+            updateLobby(roomCode);
+        }
+    });
+
     socket.on('start_match', ({ roomCode }) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
 
-        // --- ระบบเติมบอทอัตโนมัติให้ครบทั้งสองทีมก่อนเริ่มเกม ---
-        const maxPerTeam = getTargetCapacity(room.roundNumber);
-        ['RED', 'BLUE'].forEach(team => {
-            let activeTeamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
-            while (activeTeamPlayers.length < maxPerTeam) {
-                let freeSlot = 0;
-                const activeSlots = activeTeamPlayers.map(p => p.slot);
-                while (activeSlots.includes(freeSlot)) freeSlot++;
-
-                room.botCount++;
-                const botId = `bot_${Date.now()}_${room.botCount}_${Math.random()}`;
-                const newBot = { id: botId, name: `🤖 บอท ${room.botCount}`, team, slot: freeSlot, status: 'active', isBot: true };
-                room.players[botId] = newBot;
-                activeTeamPlayers.push(newBot);
-            }
-        });
-        updateLobby(roomCode);
-
         room.state = 'playing'; room.ropePosition = 50;
         io.to(roomCode).emit('match_started');
 
-        // ส่งคำถามและบันทึกคำถามไว้ประจำตัวผู้เล่น
+        // ส่งคำถาม
         for (let pId in room.players) {
             if (!room.players[pId].isBot && room.players[pId].status === 'active') {
-                const qObj = getRandomQuestion(room.roundNumber);
-                room.players[pId].currentQuestion = qObj;
-                io.to(pId).emit('new_question', qObj);
+                const nextQ = getNextQuestionForPlayer(room.players[pId], room.roundNumber);
+                room.players[pId].currentQuestion = nextQ;
+                io.to(pId).emit('new_question', nextQ);
             }
         }
 
@@ -266,11 +273,11 @@ io.on('connection', (socket) => {
 
         setTimeout(() => {
             if (room.state === 'playing' && player.status === 'active') {
-                const nextQ = getRandomQuestion(room.roundNumber);
+                const nextQ = getNextQuestionForPlayer(player, room.roundNumber);
                 player.currentQuestion = nextQ;
                 socket.emit('new_question', nextQ);
             }
-        }, 1000);
+        }, 1000); // Server หน่วง 1 วิแล้วค่อยส่งข้อใหม่ (Client จะปลดล็อคปุ่มตอนรับ event นี้)
     });
 
     function endRound(roomCode) {
@@ -293,7 +300,11 @@ io.on('connection', (socket) => {
         if (realSurvivors.length === 1) {
             room.state = 'ended'; io.to(roomCode).emit('champion', { name: realSurvivors[0].name });
         } else if (realSurvivors.length > 1) {
-            room.state = 'waiting'; room.roundNumber++;
+            room.state = 'waiting'; 
+            room.roundNumber++;
+            // คำนวณ Slot จำกัดของแต่ละทีมรอบถัดไป จาก (ผู้รอดชีวิต หาร 2) ปัดขึ้น
+            room.allowedPerTeam = Math.ceil(realSurvivors.length / 2);
+            
             realSurvivors.forEach(p => io.to(p.id).emit('pick_team_again'));
             io.to(roomCode).emit('round_end', { winningTeam, survivors: realSurvivors.length, roundNumber: room.roundNumber });
             updateLobby(roomCode);
