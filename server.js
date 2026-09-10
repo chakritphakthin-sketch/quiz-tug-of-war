@@ -68,15 +68,21 @@ io.on('connection', (socket) => {
         };
 
         socket.join(roomCode);
-        socket.emit('join_success', { name: room.players[socket.id].name, team, roomCode, slot: freeSlot });
+        socket.emit('join_success', { 
+            id: socket.id,
+            name: room.players[socket.id].name, 
+            team, 
+            roomCode, 
+            slot: freeSlot 
+        });
 
         io.to(roomCode).emit('update_lobby', {
             players: Object.values(room.players),
-            maxPerTeam: MAX_PER_TEAM
+            maxPerTeam: MAX_PER_TEAM,
+            ropePosition: room.ropePosition
         });
     });
 
-    // ระบบสลับทีมของผู้เล่น
     socket.on('switch_team', ({ roomCode }) => {
         const room = rooms[roomCode];
         if (!room || room.state !== 'waiting') return;
@@ -100,7 +106,8 @@ io.on('connection', (socket) => {
 
         io.to(roomCode).emit('update_lobby', {
             players: Object.values(room.players),
-            maxPerTeam: MAX_PER_TEAM
+            maxPerTeam: MAX_PER_TEAM,
+            ropePosition: room.ropePosition
         });
     });
 
@@ -199,7 +206,8 @@ io.on('connection', (socket) => {
                 delete room.players[socket.id];
                 io.to(code).emit('update_lobby', {
                     players: Object.values(room.players),
-                    maxPerTeam: MAX_PER_TEAM
+                    maxPerTeam: MAX_PER_TEAM,
+                    ropePosition: room.ropePosition
                 });
             }
         }
