@@ -10,7 +10,7 @@ const io = new Server(server);
 app.use(express.static(path.join(__dirname, 'public')));
 
 const MAX_PER_TEAM = 16;
-let players = {}; // เก็บข้อมูลผู้เล่นทั้งหมด { socketId: { name, team, power } }
+const rooms = {}; // เก็บข้อมูลแต่ละห้อง { roomCode: { hostId, players: {}, state, ... } }
 
 const questions = [
     { q: "กระแสไฟฟ้ามีหน่วยเป็นอะไร?", choices: ["Volt", "Ampere", "Ohm", "Watt"], answer: 1 },
@@ -20,102 +20,126 @@ const questions = [
     { q: "น้ำประกอบด้วยธาตุอะไรบ้าง?", choices: ["H และ O", "C และ O", "N และ O", "H และ C"], answer: 0 }
 ];
 
-let gameState = {
-    status: 'waiting',
-    currentQ: 0,
-    ropePosition: 50,
-    redTotalPower: 0,
-    blueTotalPower: 0,
-    redAnswered: 0,
-    blueAnswered: 0
-};
-
-let questionStartTime = 0;
-let timerInterval;
-
-function getPlayersByTeam() {
-    const red = [];
-    const blue = [];
-    for (let id in players) {
-        if (players[id].team === 'RED') red.push(players[id]);
-        if (players[id].team === 'BLUE') blue.push(players[id]);
-    }
-    return { red, blue };
+function generateRoomCode() {
+    let code;
+    do {
+        code = Math.floor(100000 + Math.random() * 900000).toString();
+    } while (rooms[code]);
+    return code;
 }
 
 io.on('connection', (socket) => {
-    // ส่งข้อมูลห้องปัจจุบันให้ผู้เล่นใหม่
-    const teams = getPlayersByTeam();
-    socket.emit('update_lobby', { red: teams.red, blue: teams.blue, max: MAX_PER_TEAM });
+    // Host สร้างห้องใหม่
+    socket.on('create_room', () => {
+        const roomCode = generateRoomCode();
+        rooms[roomCode] = {
+            hostId: socket.id,
+            players: {},
+            state: 'waiting',
+            currentQ: 0,
+            ropePosition: 50,
+            redTotalPower: 0,
+            blueTotalPower: 0
+        };
+        socket.join(roomCode);
+        socket.emit('room_created', { roomCode });
+    });
 
-    // ผู้เล่นลงทะเบียนชื่อและเลือกทีม
-    socket.on('join_game', ({ name, team }) => {
-        const teams = getPlayersByTeam();
-        
-        if (team === 'RED' && teams.red.length >= MAX_PER_TEAM) {
-            return socket.emit('join_error', 'ทีมแดงเต็มแล้ว!');
+    // Player เข้าร่วมห้อง
+    socket.on('join_room', ({ roomCode, name, team }) => {
+        const room = rooms[roomCode];
+        if (!room) {
+            return socket.emit('join_error', 'ไม่พบห้องนี้! กรุณาตรวจสอบรหัส 6 หลักอีกครั้ง');
         }
-        if (team === 'BLUE' && teams.blue.length >= MAX_PER_TEAM) {
-            return socket.emit('join_error', 'ทีมน้ำเงินเต็มแล้ว!');
+        if (room.state !== 'waiting') {
+            return socket.emit('join_error', 'การแข่งขันในห้องนี้เริ่มไปแล้ว!');
         }
 
-        players[socket.id] = {
+        const teamPlayers = Object.values(room.players).filter(p => p.team === team);
+        if (teamPlayers.length >= MAX_PER_TEAM) {
+            return socket.emit('join_error', `ทีม ${team === 'RED' ? 'แดง' : 'น้ำเงิน'} เต็มแล้ว! (สูงสุด 16 คน)`);
+        }
+
+        // หา Slot 0-15 ที่ยังว่าง
+        const takenSlots = teamPlayers.map(p => p.slot);
+        let freeSlot = 0;
+        while (takenSlots.includes(freeSlot)) {
+            freeSlot++;
+        }
+
+        room.players[socket.id] = {
             id: socket.id,
-            name: name.trim() || 'ผู้เล่นไร้นาม',
+            name: name.trim() || 'นักสู้ไร้นาม',
             team: team,
+            slot: freeSlot,
+            roomCode: roomCode,
             hasAnswered: false
         };
 
-        socket.emit('join_success', { name: players[socket.id].name, team });
-        
-        // ส่งรายชื่อผู้เล่นพร้อมชื่อไปอัปเดตหน้าจอใหญ่
-        const updatedTeams = getPlayersByTeam();
-        io.emit('update_lobby', { red: updatedTeams.red, blue: updatedTeams.blue, max: MAX_PER_TEAM });
+        socket.join(roomCode);
+        socket.emit('join_success', { name: room.players[socket.id].name, team, roomCode, slot: freeSlot });
+
+        // แจ้งเตือนทุกคนในห้องเพื่ออัปเดตผัง 16 ช่อง
+        io.to(roomCode).emit('update_lobby', {
+            players: Object.values(room.players),
+            maxPerTeam: MAX_PER_TEAM
+        });
     });
 
-    // โฮสต์สั่งเริ่มคำถาม
-    socket.on('start_question', () => {
-        if (gameState.currentQ >= questions.length) return;
+    // Host สั่งเริ่มเกม
+    socket.on('start_match', ({ roomCode }) => {
+        const room = rooms[roomCode];
+        if (!room || room.hostId !== socket.id) return;
 
-        gameState.status = 'playing';
-        gameState.redAnswered = 0;
-        gameState.blueAnswered = 0;
-        gameState.ropePosition = 50;
+        room.state = 'playing';
+        room.currentQ = 0;
+        sendQuestion(roomCode);
+    });
 
-        for (let id in players) {
-            players[id].hasAnswered = false;
+    function sendQuestion(roomCode) {
+        const room = rooms[roomCode];
+        if (!room) return;
+
+        room.ropePosition = 50;
+        room.redTotalPower = 0;
+        room.blueTotalPower = 0;
+        room.questionStartTime = Date.now();
+
+        for (let id in room.players) {
+            room.players[id].hasAnswered = false;
         }
 
-        io.emit('new_question', {
-            questionIndex: gameState.currentQ,
-            questionData: questions[gameState.currentQ]
+        io.to(roomCode).emit('new_question', {
+            questionIndex: room.currentQ,
+            questionData: questions[room.currentQ]
         });
 
-        questionStartTime = Date.now();
         let timeLeft = 15;
-
-        clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
+        clearInterval(room.timerInterval);
+        room.timerInterval = setInterval(() => {
             timeLeft--;
-            io.emit('timer_tick', timeLeft);
+            io.to(roomCode).emit('timer_tick', timeLeft);
 
             if (timeLeft <= 0) {
-                clearInterval(timerInterval);
-                endQuestion();
+                clearInterval(room.timerInterval);
+                endQuestion(roomCode);
             }
         }, 1000);
-    });
+    }
 
     // ส่งคำตอบ
-    socket.on('submit_answer', (answerIndex) => {
-        const player = players[socket.id];
-        if (!player || gameState.status !== 'playing' || player.hasAnswered) return;
+    socket.on('submit_answer', ({ roomCode, answerIndex }) => {
+        const room = rooms[roomCode];
+        if (!room || room.state !== 'playing') return;
+
+        const player = room.players[socket.id];
+        if (!player || player.hasAnswered) return;
 
         player.hasAnswered = true;
-        let timeTaken = (Date.now() - questionStartTime) / 1000;
+        let timeTaken = (Date.now() - room.questionStartTime) / 1000;
         if (timeTaken > 15) timeTaken = 15;
 
-        const isCorrect = (answerIndex === questions[gameState.currentQ].answer);
+        const isCorrect = (answerIndex === questions[room.currentQ].answer);
         let power = 0;
 
         if (isCorrect) {
@@ -123,45 +147,60 @@ io.on('connection', (socket) => {
         }
 
         if (player.team === 'RED') {
-            gameState.redTotalPower += power;
-            gameState.redAnswered++;
-            gameState.ropePosition -= (power * 0.12);
+            room.redTotalPower += power;
+            room.ropePosition -= (power * 0.12);
         } else {
-            gameState.blueTotalPower += power;
-            gameState.blueAnswered++;
-            gameState.ropePosition += (power * 0.12);
+            room.blueTotalPower += power;
+            room.ropePosition += (power * 0.12);
         }
 
-        if (gameState.ropePosition < 5) gameState.ropePosition = 5;
-        if (gameState.ropePosition > 95) gameState.ropePosition = 95;
+        if (room.ropePosition < 5) room.ropePosition = 5;
+        if (room.ropePosition > 95) room.ropePosition = 95;
 
-        socket.emit('answer_result', { isCorrect, power, timeTaken: timeTaken.toFixed(2) });
+        socket.emit('answer_result', { isCorrect, power });
 
-        io.emit('update_rope', {
-            ropePosition: gameState.ropePosition,
-            redAnswered: gameState.redAnswered,
-            blueAnswered: gameState.blueAnswered,
-            redTotalPower: Math.round(gameState.redTotalPower),
-            blueTotalPower: Math.round(gameState.blueTotalPower),
+        io.to(roomCode).emit('update_rope', {
+            ropePosition: room.ropePosition,
             lastPuller: { name: player.name, team: player.team, power }
         });
     });
 
+    // Host สั่งไปข้อถัดไป
+    socket.on('next_question', ({ roomCode }) => {
+        const room = rooms[roomCode];
+        if (!room || room.hostId !== socket.id) return;
+
+        room.currentQ++;
+        if (room.currentQ < questions.length) {
+            sendQuestion(roomCode);
+        } else {
+            io.to(roomCode).emit('game_over');
+        }
+    });
+
     socket.on('disconnect', () => {
-        delete players[socket.id];
-        const updatedTeams = getPlayersByTeam();
-        io.emit('update_lobby', { red: updatedTeams.red, blue: updatedTeams.blue, max: MAX_PER_TEAM });
+        for (let code in rooms) {
+            const room = rooms[code];
+            if (room.players[socket.id]) {
+                delete room.players[socket.id];
+                io.to(code).emit('update_lobby', {
+                    players: Object.values(room.players),
+                    maxPerTeam: MAX_PER_TEAM
+                });
+            }
+        }
     });
 });
 
-function endQuestion() {
-    gameState.status = 'summary';
-    io.emit('question_end', {
-        redTotalPower: Math.round(gameState.redTotalPower),
-        blueTotalPower: Math.round(gameState.blueTotalPower),
-        winner: gameState.redTotalPower > gameState.blueTotalPower ? 'RED' : 'BLUE'
+function endQuestion(roomCode) {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    io.to(roomCode).emit('question_end', {
+        redTotalPower: Math.round(room.redTotalPower),
+        blueTotalPower: Math.round(room.blueTotalPower),
+        winner: room.redTotalPower > room.blueTotalPower ? 'RED' : (room.blueTotalPower > room.redTotalPower ? 'BLUE' : 'DRAW')
     });
-    gameState.currentQ++;
 }
 
 const PORT = process.env.PORT || 3000;
