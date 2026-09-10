@@ -18,11 +18,7 @@ const questions = [
     { q: "โลกหมุนรอบตัวเองใช้เวลาเท่าไร?", choices: ["12 ชั่วโมง", "24 ชั่วโมง", "30 วัน", "365 วัน"], answer: 1 },
     { q: "ข้อใดคือสัตว์เลี้ยงลูกด้วยนม?", choices: ["ฉลาม", "จระเข้", "วาฬ", "เต่า"], answer: 2 },
     { q: "น้ำประกอบด้วยธาตุอะไรบ้าง?", choices: ["H และ O", "C และ O", "N และ O", "H และ C"], answer: 0 },
-    { q: "ดาวเคราะห์ดวงใดใหญ่ที่สุดในระบบสุริยะ?", choices: ["โลก", "ดาวพฤหัสบดี", "ดาวเสาร์", "ดาวอังคาร"], answer: 1 },
-    { q: "สัตว์ชนิดใดมี 8 ขา?", choices: ["แมงมุม", "แมลงวัน", "ปู", "กุ้ง"], answer: 0 },
-    { q: "ประเทศใดมีประชากรมากที่สุดในโลก?", choices: ["อเมริกา", "อินเดีย", "จีน", "รัสเซีย"], answer: 1 },
-    { q: "ใครคือผู้ค้นพบแรงโน้มถ่วง?", choices: ["อัลเบิร์ต ไอน์สไตน์", "ไอแซก นิวตัน", "กาลิเลโอ", "โทมัส เอดิสัน"], answer: 1 },
-    { q: "อวัยวะใดทำหน้าที่กรองของเสียออกจากเลือด?", choices: ["หัวใจ", "ตับ", "ไต", "ปอด"], answer: 2 }
+    { q: "ดาวเคราะห์ดวงใดใหญ่ที่สุดในระบบสุริยะ?", choices: ["โลก", "ดาวพฤหัสบดี", "ดาวเสาร์", "ดาวอังคาร"], answer: 1 }
 ];
 
 function generateRoomCode() {
@@ -34,7 +30,7 @@ function generateRoomCode() {
 io.on('connection', (socket) => {
     socket.on('create_room', () => {
         const roomCode = generateRoomCode();
-        rooms[roomCode] = { hostId: socket.id, players: {}, state: 'waiting', ropePosition: 50, timeLeft: MATCH_DURATION, timerInterval: null };
+        rooms[roomCode] = { hostId: socket.id, players: {}, state: 'waiting', ropePosition: 50, timeLeft: MATCH_DURATION, timerInterval: null, botInterval: null };
         socket.join(roomCode);
         socket.emit('room_created', { roomCode });
     });
@@ -42,165 +38,167 @@ io.on('connection', (socket) => {
     socket.on('join_room', ({ roomCode, name, team }) => {
         const room = rooms[roomCode];
         if (!room) return socket.emit('join_error', 'ไม่พบห้องนี้!');
-        if (room.state === 'playing') return socket.emit('join_error', 'การแข่งขันกำลังดำเนินอยู่!');
+        if (room.state === 'playing') return socket.emit('join_error', 'กำลังแข่งขันอยู่ ไม่สามารถเข้าได้!');
 
         const teamPlayers = Object.values(room.players).filter(p => p.team === team);
-        if (teamPlayers.length >= 16) {
-            return socket.emit('join_error', `ทีม ${team} เต็มโควต้า 16 คนแล้ว!`);
-        }
+        if (teamPlayers.length >= 16) return socket.emit('join_error', `ทีม ${team} เต็มโควต้าแล้ว!`);
 
         const takenSlots = teamPlayers.map(p => p.slot);
-        let freeSlot = 0;
-        while (takenSlots.includes(freeSlot)) freeSlot++;
+        let freeSlot = 0; while (takenSlots.includes(freeSlot)) freeSlot++;
 
-        room.players[socket.id] = {
-            id: socket.id,
-            name: name.trim() || 'Player',
-            team: team,
-            slot: freeSlot,
-            qIndex: 0,
-            qStartTime: 0
-        };
+        room.players[socket.id] = { id: socket.id, name: name.trim() || 'Player', team: team, slot: freeSlot, qIndex: 0, qStartTime: 0, isBot: false };
 
         socket.join(roomCode);
         socket.emit('join_success', { name: room.players[socket.id].name, team, roomCode });
         io.to(roomCode).emit('update_lobby', { players: Object.values(room.players) });
     });
 
-    // ให้คนรอดชีวิตเลือกทีมใหม่ แบ่งครึ่งอัตโนมัติ
+    // ให้ Host เตะคนออก
+    socket.on('kick_player', ({ roomCode, playerId }) => {
+        const room = rooms[roomCode];
+        if (room && room.players[playerId] && room.hostId === socket.id) {
+            if (!room.players[playerId].isBot) io.to(playerId).emit('kicked');
+            delete room.players[playerId];
+            io.to(roomCode).emit('update_lobby', { players: Object.values(room.players) });
+        }
+    });
+
+    // ให้ผู้เล่นกดออกห้องเอง
+    socket.on('leave_room', ({ roomCode }) => {
+        const room = rooms[roomCode];
+        if (room && room.players[socket.id]) {
+            delete room.players[socket.id];
+            io.to(roomCode).emit('update_lobby', { players: Object.values(room.players) });
+        }
+    });
+
+    // ให้ Host เพิ่ม Bot
+    socket.on('add_bot', ({ roomCode, team }) => {
+        const room = rooms[roomCode];
+        if (!room || room.hostId !== socket.id) return;
+        
+        const teamPlayers = Object.values(room.players).filter(p => p.team === team);
+        if (teamPlayers.length >= 16) return;
+
+        const takenSlots = teamPlayers.map(p => p.slot);
+        let freeSlot = 0; while (takenSlots.includes(freeSlot)) freeSlot++;
+
+        const botId = 'bot_' + Math.random().toString(36).substring(2, 9);
+        room.players[botId] = { id: botId, name: '🤖 Bot_' + Math.floor(Math.random()*999), team: team, slot: freeSlot, isBot: true };
+        io.to(roomCode).emit('update_lobby', { players: Object.values(room.players) });
+    });
+
     socket.on('select_team_next_round', ({ roomCode, team }) => {
         const room = rooms[roomCode];
         if (!room || !room.players[socket.id]) return;
 
-        const totalSurvivors = Object.keys(room.players).length;
-        const maxPerTeam = Math.ceil(totalSurvivors / 2); // บังคับแบ่งครึ่ง
+        const maxPerTeam = Math.ceil(Object.keys(room.players).length / 2);
         const teamPlayers = Object.values(room.players).filter(p => p.team === team);
 
-        if (teamPlayers.length >= maxPerTeam) {
-            return socket.emit('join_error', `ทีม ${team} เต็มแล้วสำหรับรอบนี้! (รับได้ฝั่งละ ${maxPerTeam} คน) ให้เลือกอีกทีมครับ`);
-        }
+        if (teamPlayers.length >= maxPerTeam) return socket.emit('join_error', `ทีม ${team} เต็มแล้ว! ให้เลือกอีกทีมครับ`);
 
-        const takenSlots = teamPlayers.map(p => p.slot);
-        let freeSlot = 0;
-        while (takenSlots.includes(freeSlot)) freeSlot++;
+        let freeSlot = 0; while (teamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
+        room.players[socket.id].team = team; room.players[socket.id].slot = freeSlot;
 
-        room.players[socket.id].team = team;
-        room.players[socket.id].slot = freeSlot;
-
-        socket.emit('team_selected_success', { team, slot: freeSlot });
+        socket.emit('team_selected_success');
         io.to(roomCode).emit('update_lobby', { players: Object.values(room.players) });
     });
 
     socket.on('start_match', ({ roomCode }) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
+        if (Object.values(room.players).some(p => !p.team)) return socket.emit('start_error', 'ยังมีคนไม่เลือกทีม!');
 
-        const unassigned = Object.values(room.players).filter(p => !p.team);
-        if (unassigned.length > 0) return socket.emit('start_error', 'ผู้รอดชีวิตยังเลือกทีมไม่ครบ!');
-
-        room.state = 'playing';
-        room.ropePosition = 50;
-        room.timeLeft = MATCH_DURATION;
+        room.state = 'playing'; room.ropePosition = 50; room.timeLeft = MATCH_DURATION;
 
         for (let id in room.players) {
-            room.players[id].qIndex = 0;
-            room.players[id].qStartTime = Date.now();
-            io.to(id).emit('start_player_stream', { qIndex: 0, totalQuestions: questions.length, qData: questions[0] });
+            if(!room.players[id].isBot) {
+                room.players[id].qIndex = 0; room.players[id].qStartTime = Date.now();
+                io.to(id).emit('start_player_stream', { qIndex: 0, totalQuestions: questions.length, qData: questions[0] });
+            }
         }
+        io.to(roomCode).emit('match_started', { duration: MATCH_DURATION });
 
-        io.to(roomCode).emit('match_started', { duration: MATCH_DURATION, questions: questions });
+        // Logic การทำงานของ Bot ระหว่างแข่ง
+        clearInterval(room.botInterval);
+        room.botInterval = setInterval(() => {
+            if(room.state !== 'playing') return clearInterval(room.botInterval);
+            Object.values(room.players).forEach(p => {
+                if (p.isBot && Math.random() < 0.3) { // บอทมีโอกาสสุ่มตอบ 30% ทุกๆ 1 วิ
+                    let power = Math.random() < 0.6 ? 45 : 0; // ตอบถูก 60% ได้พลัง 45
+                    if(power > 0) {
+                        const divider = Math.max(1, Object.values(room.players).filter(pl => pl.team === p.team).length);
+                        const move = (power / 100) * (8 / divider);
+                        room.ropePosition += (p.team === 'RED' ? -move : move);
+                        room.ropePosition = Math.max(0, Math.min(100, room.ropePosition));
+                        io.to(roomCode).emit('update_rope', { ropePosition: room.ropePosition });
+                        checkWinCon(roomCode);
+                    }
+                }
+            });
+        }, 1000);
 
         clearInterval(room.timerInterval);
         room.timerInterval = setInterval(() => {
-            room.timeLeft--;
-            io.to(roomCode).emit('timer_tick', room.timeLeft);
-            if (room.timeLeft <= 0) {
-                clearInterval(room.timerInterval);
-                endMatch(roomCode);
-            }
+            room.timeLeft--; io.to(roomCode).emit('timer_tick', room.timeLeft);
+            if (room.timeLeft <= 0) endMatch(roomCode);
         }, 1000);
     });
 
     socket.on('submit_answer_fast', ({ roomCode, qIndex, answerIndex }) => {
         const room = rooms[roomCode];
-        if (!room || room.state !== 'playing') return;
-
+        if (!room || room.state !== 'playing' || !room.players[socket.id]) return;
         const player = room.players[socket.id];
-        if (!player) return;
-
-        const timeTaken = Math.min(15, (Date.now() - player.qStartTime) / 1000);
+        
         const isCorrect = (answerIndex === questions[qIndex].answer);
         let power = 0;
-
-        const myTeamCount = Object.values(room.players).filter(p => p.team === player.team).length;
-        const divider = Math.max(1, myTeamCount);
-
         if (isCorrect) {
-            const speedBonus = 50 * ((15 - timeTaken) / 15);
-            power = Math.round((50 + speedBonus) * 10) / 10;
-            const moveAmount = (power / 100) * (8 / divider);
-            
-            if (player.team === 'RED') room.ropePosition -= moveAmount;
-            else room.ropePosition += moveAmount;
-
+            const timeTaken = Math.min(15, (Date.now() - player.qStartTime) / 1000);
+            power = Math.round((50 + (50 * ((15 - timeTaken) / 15))) * 10) / 10;
+            const divider = Math.max(1, Object.values(room.players).filter(p => p.team === player.team).length);
+            const move = (power / 100) * (8 / divider);
+            room.ropePosition += (player.team === 'RED' ? -move : move);
             room.ropePosition = Math.max(0, Math.min(100, room.ropePosition));
         }
 
-        player.qIndex = (qIndex + 1) % questions.length;
-        player.qStartTime = Date.now();
-
+        player.qIndex = (qIndex + 1) % questions.length; player.qStartTime = Date.now();
         socket.emit('answer_feedback', { isCorrect, power, nextQIndex: player.qIndex, nextQData: questions[player.qIndex] });
         io.to(roomCode).emit('update_rope', { ropePosition: room.ropePosition });
-
-        if (room.ropePosition <= 0 || room.ropePosition >= 100) {
-            clearInterval(room.timerInterval);
-            endMatch(roomCode);
-        }
+        checkWinCon(roomCode);
     });
+
+    function checkWinCon(roomCode) {
+        const room = rooms[roomCode];
+        if (room.ropePosition <= 0 || room.ropePosition >= 100) endMatch(roomCode);
+    }
 
     function endMatch(roomCode) {
         const room = rooms[roomCode];
-        if (!room) return;
-
+        if (!room || room.state !== 'playing') return;
         room.state = 'ended';
+        clearInterval(room.timerInterval);
+        clearInterval(room.botInterval);
 
-        let winningTeam = 'RED';
-        if (room.ropePosition > 50) winningTeam = 'BLUE';
-        else if (room.ropePosition < 50) winningTeam = 'RED';
-        else winningTeam = Math.random() < 0.5 ? 'RED' : 'BLUE';
-
-        const losers = [];
+        let winningTeam = room.ropePosition > 50 ? 'BLUE' : (room.ropePosition < 50 ? 'RED' : (Math.random() < 0.5 ? 'RED' : 'BLUE'));
+        
         const winners = [];
-
         for (let id in room.players) {
             if (room.players[id].team === winningTeam) {
-                room.players[id].team = null; // รีเซ็ตทีมให้คนชนะ
-                room.players[id].slot = -1;
-                winners.push(room.players[id]);
+                room.players[id].team = null; room.players[id].slot = -1; // รีเซ็ตทีมคนชนะ
+                if(!room.players[id].isBot) winners.push(room.players[id]);
             } else {
-                losers.push(id);
+                if(!room.players[id].isBot) io.to(id).emit('eliminated', { msg: '💥 ทีมคุณแพ้! ถูกคัดออก' });
+                delete room.players[id]; // เตะคนแพ้และบอทฝั่งแพ้ออก
             }
         }
 
-        // เตะคนแพ้ออก
-        losers.forEach(id => {
-            io.to(id).emit('eliminated', { msg: '💥 ทีมของคุณแพ้! คุณถูกคัดออกจากสนาม' });
-            delete room.players[id];
-        });
-
         const remainingCount = Object.keys(room.players).length;
 
-        if (remainingCount === 1) {
-            const champ = winners[0];
-            io.to(champ.id).emit('you_are_champion');
-            io.to(roomCode).emit('champion_declared', { champName: champ.name });
-        } else if (remainingCount === 0) {
-            io.to(roomCode).emit('no_winners');
+        if (remainingCount === 1 && winners.length === 1) {
+            io.to(winners[0].id).emit('you_are_champion');
+            io.to(roomCode).emit('champion_declared', { champName: winners[0].name });
         } else {
-            // ให้คนชนะอยู่ในห้องต่อ และเด้งหน้าเลือกทีมใหม่
-            winners.forEach(w => {
-                io.to(w.id).emit('survived_round', { remainingCount });
-            });
+            winners.forEach(w => io.to(w.id).emit('survived_round', { remainingCount }));
             io.to(roomCode).emit('round_ended_survivors', { winningTeam, remainingCount });
         }
     }
