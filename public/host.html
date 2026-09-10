@@ -2,138 +2,138 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <title>Quiz Tug of War - MAIN SCREEN</title>
+    <title>Quiz Tug of War - Arena Screen</title>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Kanit', sans-serif; background-color: #111; color: white; margin: 0; overflow: hidden; text-align: center; }
-        .header { padding: 20px; font-size: 2em; font-weight: 900; background: #222; }
-        .question-box { font-size: 3em; margin: 40px; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
-        .timer { font-size: 5em; font-weight: 900; color: #f1c40f; margin-bottom: 20px; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Kanit', sans-serif; background: #0f172a; color: white; margin: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
         
-        .battle-arena { display: flex; justify-content: space-between; align-items: center; padding: 0 50px; position: relative; height: 300px; }
-        .team-box { width: 300px; padding: 20px; border-radius: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        .red-team { background: linear-gradient(135deg, #e74c3c, #c0392b); }
-        .blue-team { background: linear-gradient(135deg, #3498db, #2980b9); }
-        
-        .team-title { font-size: 2.5em; font-weight: 900; }
-        .stats { font-size: 1.5em; margin-top: 10px; }
-        .power { font-size: 2.5em; font-weight: 900; color: #fff176; }
+        .header { background: #1e293b; padding: 15px; text-align: center; font-size: 1.8em; font-weight: 900; border-bottom: 4px solid #334155; }
+        .question-box { background: #1e293b; margin: 15px auto; padding: 20px 40px; border-radius: 15px; font-size: 2.2em; text-align: center; max-width: 80%; border: 2px solid #475569; }
+        .timer { font-size: 3.5em; font-weight: 900; color: #f59e0b; text-align: center; margin-bottom: 5px; }
 
-        .rope-container { position: absolute; left: 0; right: 0; top: 150px; display: flex; justify-content: center; z-index: 0; }
-        .rope-track { width: 60%; height: 20px; background: rgba(255,255,255,0.1); border-radius: 10px; position: relative; }
-        .rope-mark { position: absolute; left: 50%; top: -10px; height: 40px; width: 4px; background: yellow; transform: translateX(-50%); }
+        /* ฉากสนามแข่งหน้าผา */
+        .stage { flex: 1; display: flex; position: relative; background: linear-gradient(180deg, #0284c7 0%, #0f172a 100%); overflow: hidden; }
         
-        /* นี่คือตัวเชือกที่ขยับได้แบบ Real-time */
-        .rope {
-            position: absolute;
-            font-size: 4em;
-            top: -45px;
-            left: 50%;
-            /* อนิเมชันทำให้เชือกดึงแบบสมูท */
-            transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            transform: translateX(-50%);
-            white-space: nowrap;
-        }
+        .cliff { width: 35%; height: 100%; position: absolute; bottom: 0; display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; z-index: 2; }
+        .cliff-left { left: 0; background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%); border-top-right-radius: 40px; border-right: 8px solid #f87171; }
+        .cliff-right { right: 0; background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%); border-top-left-radius: 40px; border-left: 8px solid #60a5fa; }
+        
+        .chasm { position: absolute; left: 35%; right: 35%; height: 100%; background: #020617; z-index: 1; display: flex; justify-content: center; align-items: center; }
+        .chasm-text { color: #334155; font-size: 3em; font-weight: 900; transform: rotate(-90deg); letter-spacing: 10px; }
 
-        #host-controls { margin-top: 50px; }
-        button { padding: 15px 40px; font-size: 1.5em; font-family: 'Kanit'; font-weight: bold; background: #2ecc71; color: white; border: none; border-radius: 10px; cursor: pointer; transition: 0.2s; }
-        button:hover { background: #27ae60; transform: scale(1.05); }
+        /* ตัวละครและ Name Tag */
+        .players-container { display: flex; flex-wrap: wrap-reverse; gap: 15px; align-content: flex-start; height: 75%; overflow: hidden; padding: 10px; }
+        .player-card { display: flex; flex-direction: column; align-items: center; animation: popIn 0.3s ease-out; }
+        .avatar { font-size: 2.5em; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); }
+        .nametag { background: rgba(0,0,0,0.75); padding: 2px 10px; border-radius: 12px; font-size: 0.85em; font-weight: bold; border: 1px solid rgba(255,255,255,0.2); max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* ระบบเชือก */
+        .rope-system { position: absolute; top: 60%; left: 10%; right: 10%; height: 20px; z-index: 10; transform: translateY(-50%); }
+        .rope-line { width: 100%; height: 12px; background: #d97706; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); position: relative; }
+        .rope-knot { position: absolute; top: -25px; left: 50%; transform: translateX(-50%); font-size: 3em; transition: left 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        .pull-feed { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); padding: 10px 30px; border-radius: 30px; font-size: 1.5em; font-weight: bold; color: #facc15; border: 2px solid #facc15; display: none; z-index: 20; }
+        
+        .controls { text-align: center; padding: 20px; background: #0f172a; z-index: 30; }
+        button { padding: 12px 35px; font-size: 1.5em; font-family: 'Kanit'; font-weight: bold; background: #22c55e; color: white; border: none; border-radius: 12px; cursor: pointer; }
+
+        @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
     </style>
 </head>
 <body>
 
-    <div class="header">QUIZ TUG OF WAR 🏆</div>
+    <div class="header">QUIZ TUG OF WAR 🪢 ARENA</div>
 
-    <div id="setup-screen">
-        <h1 style="margin-top: 100px;">รอผู้เล่นเข้าห้อง...</h1>
-        <div style="font-size: 2em;">
-            🔴 ทีมแดง: <span id="lobby-red">0</span> คน | 
-            🔵 ทีมน้ำเงิน: <span id="lobby-blue">0</span> คน
-        </div>
-        <div id="host-controls">
-            <button onclick="startNextQuestion()">เริ่มคำถามข้อที่ 1</button>
+    <div id="setup-view">
+        <div class="controls">
+            <button onclick="startQuestion()">เริ่มเกม / เริ่มข้อต่อไป</button>
         </div>
     </div>
 
-    <div id="game-screen" style="display: none;">
-        <div class="question-box" id="question-text">คำถามจะแสดงที่นี่?</div>
-        <div class="timer" id="timer">15</div>
+    <div class="question-box" id="q-box">รอเริ่มคำถาม...</div>
+    <div class="timer" id="timer-box">15</div>
 
-        <div class="battle-arena">
-            <div class="team-box red-team">
-                <div class="team-title">TEAM RED 🔴</div>
-                <div class="stats">ตอบแล้ว: <span id="red-answered">0</span> คน</div>
-                <div class="power">💪 <span id="red-power">0</span></div>
-            </div>
+    <div class="stage">
+        <!-- หน้าผาทีมแดง -->
+        <div class="cliff cliff-left">
+            <h2 style="margin:0 0 10px 0;">🔴 RED (<span id="red-count">0</span>/16)</h2>
+            <div class="players-container" id="red-players"></div>
+        </div>
 
-            <div class="rope-container">
-                <div class="rope-track">
-                    <div class="rope-mark"></div>
-                    <!-- เชือก -->
-                    <div class="rope" id="rope">🔴 ═════🪢═════ 🔵</div>
+        <!-- หุบเหวตรงกลาง -->
+        <div class="chasm">
+            <div class="chasm-text">BOTTOMLESS PIT</div>
+            <div class="rope-system">
+                <div class="rope-line">
+                    <div class="rope-knot" id="knot">🪢</div>
                 </div>
             </div>
-
-            <div class="team-box blue-team">
-                <div class="team-title">TEAM BLUE 🔵</div>
-                <div class="stats">ตอบแล้ว: <span id="blue-answered">0</span> คน</div>
-                <div class="power">💪 <span id="blue-power">0</span></div>
-            </div>
         </div>
 
-        <div id="host-controls-next" style="display: none;">
-            <h1 id="winner-text" style="color: #f1c40f; font-size: 3em;"></h1>
-            <button onclick="startNextQuestion()">เริ่มข้อต่อไป</button>
+        <!-- หน้าผาทีมน้ำเงิน -->
+        <div class="cliff cliff-right">
+            <h2 style="margin:0 0 10px 0; text-align:right;">🔵 BLUE (<span id="blue-count">0</span>/16)</h2>
+            <div class="players-container" id="blue-players" style="justify-content: flex-end;"></div>
         </div>
+
+        <div class="pull-feed" id="feed-box"></div>
     </div>
 
     <script>
         const socket = io();
 
-        // อัปเดตตอนรอคน
+        // อัปเดตตัวละครแบบมี Name Tag บนหน้าผา
         socket.on('update_lobby', (data) => {
-            document.getElementById('lobby-red').innerText = data.redPlayers;
-            document.getElementById('lobby-blue').innerText = data.bluePlayers;
+            document.getElementById('red-count').innerText = data.red.length;
+            document.getElementById('blue-count').innerText = data.blue.length;
+
+            renderPlayers('red-players', data.red, '🏃‍♂️');
+            renderPlayers('blue-players', data.blue, '🏃‍♀️');
         });
 
-        function startNextQuestion() {
-            socket.emit('start_question');
-            document.getElementById('setup-screen').style.display = 'none';
-            document.getElementById('game-screen').style.display = 'block';
-            document.getElementById('host-controls-next').style.display = 'none';
-            document.getElementById('rope').style.left = '50%'; // รีเซ็ตเชือกตรงกลาง
-            
-            // รีเซ็ตค่าหน้าจอ
-            document.getElementById('red-answered').innerText = '0';
-            document.getElementById('blue-answered').innerText = '0';
+        function renderPlayers(containerId, playerList, avatarSymbol) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            playerList.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'player-card';
+                card.innerHTML = `
+                    <div class="nametag">${p.name}</div>
+                    <div class="avatar">${avatarSymbol}</div>
+                `;
+                container.appendChild(card);
+            });
         }
 
-        // รับคำถามใหม่
+        function startQuestion() {
+            socket.emit('start_question');
+            document.getElementById('knot').style.left = '50%';
+        }
+
         socket.on('new_question', (data) => {
-            document.getElementById('question-text').innerText = `ข้อ ${data.questionIndex + 1}: ${data.questionData.q}`;
+            document.getElementById('q-box').innerText = `ข้อที่ ${data.questionIndex + 1}: ${data.questionData.q}`;
         });
 
-        // เวลานับถอยหลัง
-        socket.on('timer_tick', (timeLeft) => {
-            document.getElementById('timer').innerText = timeLeft;
+        socket.on('timer_tick', (t) => {
+            document.getElementById('timer-box').innerText = t;
         });
 
-        // 💥 ไฮไลท์! ขยับเชือก Real-time
+        // เชือกขยับแบบ Real-time พร้อมแจ้งเตือนคนกระชาก
         socket.on('update_rope', (data) => {
-            // data.ropePosition = 0 (ซ้ายสุด) ถึง 100 (ขวาสุด)
-            document.getElementById('rope').style.left = `${data.ropePosition}%`;
-            document.getElementById('red-answered').innerText = data.redAnswered;
-            document.getElementById('blue-answered').innerText = data.blueAnswered;
-            document.getElementById('red-power').innerText = data.redTotalPower;
-            document.getElementById('blue-power').innerText = data.blueTotalPower;
+            document.getElementById('knot').style.left = `${data.ropePosition}%`;
+            
+            if (data.lastPuller) {
+                const feed = document.getElementById('feed-box');
+                feed.style.display = 'block';
+                feed.innerText = `💥 ${data.lastPuller.name} (${data.lastPuller.team}) ดึงแรง +${data.lastPuller.power}`;
+            }
         });
 
-        // จบข้อ
         socket.on('question_end', (data) => {
-            document.getElementById('timer').innerText = "TIME'S UP!";
-            document.getElementById('host-controls-next').style.display = 'block';
-            document.getElementById('winner-text').innerText = `${data.winner} IS PULLING!`;
+            document.getElementById('timer-box').innerText = "หมดเวลา!";
+            document.getElementById('feed-box').innerText = `🏆 ฝั่ง ${data.winner} ได้แรงดึงรวมสูงสุด!`;
         });
     </script>
 </body>
