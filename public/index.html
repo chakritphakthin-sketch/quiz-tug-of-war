@@ -10,26 +10,24 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Kanit', sans-serif; background: #0f172a; color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        #setup-container { padding: 20px; display: flex; flex-direction: column; justify-content: center; height: 100%; max-width: 500px; margin: 0 auto; width: 100%; }
-        .card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 25px; text-align: center; }
+        .card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 25px; text-align: center; max-width: 450px; width: 90%; margin: auto; }
         input { width: 100%; padding: 16px; font-size: 1.2em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; border: 2px solid #38bdf8; background: rgba(0,0,0,0.4); color: #fff; margin-bottom: 15px; text-align: center; }
         .btn-3d { width: 100%; padding: 18px; font-size: 1.4em; font-family: 'Kanit'; font-weight: 900; border: none; border-radius: 16px; margin-bottom: 12px; color: white; cursor: pointer; }
         .team-red { background: linear-gradient(180deg, #ff4d4d, #d10000); }
         .team-blue { background: linear-gradient(180deg, #4da6ff, #0066cc); }
 
         #game-container { display: none; flex-direction: column; height: 100vh; }
-        .mini-arena { flex: 0 0 35%; background: radial-gradient(circle at center, #1e1e38, #05050a); position: relative; display: flex; flex-direction: column; border-bottom: 3px solid #334155; }
-        .arena-header { display: flex; justify-content: space-between; padding: 10px 15px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 10; font-size: 1.1em; }
+        .mini-arena { flex: 0 0 30%; background: radial-gradient(circle at center, #1e1e38, #05050a); position: relative; display: flex; flex-direction: column; border-bottom: 3px solid #334155; }
+        .arena-header { display: flex; justify-content: space-between; padding: 10px 15px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 10; }
         
         .rope-system { position: absolute; top: 60%; left: 0; right: 0; height: 10px; }
         .rope-line { width: 100%; height: 8px; background: repeating-linear-gradient(45deg, #d4a373, #d4a373 5px, #a8794d 5px, #a8794d 10px); position: relative; }
-        .rope-knot { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 35px; height: 35px; background: #facc15; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 10px #facc15; transition: left 0.2s linear; display: flex; justify-content: center; align-items: center; font-size: 1em; z-index: 20;}
+        .rope-knot { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 35px; height: 35px; background: #facc15; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 10px #facc15; transition: left 0.2s linear; display: flex; justify-content: center; align-items: center; z-index: 20;}
 
         .quiz-section { flex: 1; padding: 15px; background: #0f172a; display: flex; flex-direction: column; position: relative; }
         .q-box { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 12px; font-size: 1.1em; font-weight: bold; margin-bottom: 12px; text-align: center; min-height: 70px; display: flex; align-items: center; justify-content: center; }
-        
         .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; }
-        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 15px 10px; font-size: 1.05em; font-family: 'Kanit'; font-weight: bold; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; }
+        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 15px 10px; font-size: 1.05em; font-family: 'Kanit'; font-weight: bold; border-radius: 12px; cursor: pointer; }
 
         .floating-power { position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%); font-size: 2.5em; font-weight: 900; opacity: 0; pointer-events: none; z-index: 100; }
         @keyframes floatUp {
@@ -40,10 +38,12 @@
         }
 
         #round-status { text-align: center; font-size: 1.1em; font-weight: bold; color: #facc15; padding-bottom: 5px; }
+        #screen-eliminated, #screen-reselect, #screen-champion { display: none; }
     </style>
 </head>
 <body>
-    <div id="setup-container">
+    <!-- หน้าล็อกอิน -->
+    <div id="setup-container" style="display: flex; height: 100vh;">
         <div class="card">
             <h2 style="color: #38bdf8; margin-bottom: 15px;">🎮 เลือกทีมเข้าร่วมศึก</h2>
             <input type="number" id="pin-input" placeholder="รหัส PIN 6 หลัก" maxlength="6">
@@ -53,10 +53,43 @@
         </div>
     </div>
 
+    <!-- หน้าเลือกทีมใหม่สำหรับคนผ่านเข้ารอบ -->
+    <div id="screen-reselect" style="height: 100vh;">
+        <div class="card">
+            <h2 style="color: #facc15; margin-bottom: 10px;">🎉 คุณผ่านเข้ารอบ!</h2>
+            <p style="margin-bottom: 20px; color: #94a3b8;" id="survivor-count-txt">ผู้เหลือรอด: - คน</p>
+
+            <h3 style="margin-bottom: 15px;">เลือกทีมใหม่สำหรับรอบถัดไป:</h3>
+            <button class="btn-3d team-red" onclick="selectTeamNextRound('RED')">🔴 JOIN RED</button>
+            <button class="btn-3d team-blue" onclick="selectTeamNextRound('BLUE')">🔵 JOIN BLUE</button>
+            <p id="reselect-status" style="margin-top:10px; color:#00ffcc; display:none;">✅ เลือกทีมสำเร็จ! รอ Host เริ่มรอบถัดไป...</p>
+        </div>
+    </div>
+
+    <!-- หน้าจอดดัดออก (แพ้) -->
+    <div id="screen-eliminated" style="height: 100vh;">
+        <div class="card" style="border-color: #ef4444;">
+            <h1 style="font-size: 3em; color: #ef4444; margin-bottom: 10px;">💥 ELIMINATED</h1>
+            <p style="font-size: 1.2em; margin-bottom: 20px;" id="elim-msg">ทีมของคุณแพ้ในรอบนี้!</p>
+            <button class="btn-3d" style="background:#334155;" onclick="location.reload()">🔄 กลับหน้าหลัก</button>
+        </div>
+    </div>
+
+    <!-- หน้าจอแชมป์เปี้ยน -->
+    <div id="screen-champion" style="height: 100vh;">
+        <div class="card" style="border-color: #facc15; background: radial-gradient(circle, rgba(250,204,21,0.2), transparent);">
+            <h1 style="font-size: 3.5em; color: #facc15; margin-bottom: 10px;">🏆 VICTORY!</h1>
+            <h2 style="font-size: 1.8em; color: #fff;">คุณคือผู้ชนะเลิศคนสุดท้าย!</h2>
+            <p style="margin-top: 15px; color: #94a3b8;">สุดยอดสายสปีดชักเย่อ 👑</p>
+            <button class="btn-3d" style="background:#facc15; color:#000; margin-top:20px;" onclick="location.reload()">เล่นใหม่อีกครั้ง</button>
+        </div>
+    </div>
+
+    <!-- หน้าเกมแข่งขัน -->
     <div id="game-container">
         <div class="mini-arena">
             <div class="arena-header">
-                <span>⚔️ ชักเย่อเรียลไทม์</span>
+                <span>⚔️ ชักเย่อ Battle Royale</span>
                 <span>⏱️ <span id="match-timer" style="color:#facc15; font-size:1.2em;">100</span>s</span>
             </div>
             <div class="rope-system">
@@ -67,7 +100,7 @@
         </div>
 
         <div class="quiz-section">
-            <div id="round-status">ข้อที่ 1 / 15 (รัวสปีดให้ไว!)</div>
+            <div id="round-status">ข้อที่ 1 / 15</div>
             <div class="q-box" id="q-text">กำลังเตรียมโจทย์...</div>
             <div class="grid-choices">
                 <button class="choice-btn" id="c0" onclick="sendAns(0)">-</button>
@@ -97,11 +130,41 @@
         socket.on('join_success', () => {
             document.getElementById('setup-container').style.display = 'none';
             document.getElementById('game-container').style.display = 'flex';
-            document.getElementById('q-text').innerText = '✅ เข้าห้องแล้ว! รอ Host กดเริ่มศึก...';
+            document.getElementById('q-text').innerText = '✅ เข้าห้องแล้ว! รอ Host เริ่มเกม...';
             disableButtons(true);
         });
 
+        function selectTeamNextRound(team) {
+            socket.emit('select_team_next_round', { roomCode: currentRoomCode, team });
+        }
+
+        socket.on('team_selected_success', () => {
+            document.getElementById('reselect-status').style.display = 'block';
+        });
+
+        socket.on('survived_round', (data) => {
+            document.getElementById('game-container').style.display = 'none';
+            document.getElementById('screen-reselect').style.display = 'flex';
+            document.getElementById('survivor-count-txt').innerText = `เหลือผู้รอดชีวิตทั้งหมด: ${data.remainingCount} คน`;
+            document.getElementById('reselect-status').style.display = 'none';
+        });
+
+        socket.on('eliminated', (data) => {
+            document.getElementById('game-container').style.display = 'none';
+            document.getElementById('screen-reselect').style.display = 'none';
+            document.getElementById('screen-eliminated').style.display = 'flex';
+            document.getElementById('elim-msg').innerText = data.msg;
+        });
+
+        socket.on('you_are_champion', () => {
+            document.getElementById('game-container').style.display = 'none';
+            document.getElementById('screen-reselect').style.display = 'none';
+            document.getElementById('screen-champion').style.display = 'flex';
+        });
+
         socket.on('start_player_stream', (data) => {
+            document.getElementById('screen-reselect').style.display = 'none';
+            document.getElementById('game-container').style.display = 'flex';
             currentQIndex = data.qIndex;
             loadQuestion(data.qData, data.qIndex, data.totalQuestions);
         });
@@ -144,18 +207,6 @@
 
         socket.on('timer_tick', (t) => { document.getElementById('match-timer').innerText = t; });
         socket.on('update_rope', (data) => { document.getElementById('mini-knot').style.left = `${data.ropePosition}%`; });
-
-        socket.on('match_ended', (data) => {
-            document.getElementById('q-text').innerText = data.detail;
-            document.getElementById('round-status').innerText = '🏁 จบศึกชักเย่อ!';
-            disableButtons(true);
-        });
-
-        socket.on('return_to_lobby', () => {
-            document.getElementById('q-text').innerText = '🔄 กลับสู่ Lobby เตรียมจัดทีมรอบต่อไป!';
-            document.getElementById('round-status').innerText = 'รอ Host เริ่มรอบใหม่...';
-            disableButtons(true);
-        });
     </script>
 </body>
 </html>
