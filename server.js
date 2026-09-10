@@ -181,17 +181,31 @@ io.on('connection', (socket) => {
         const player = room.players[socket.id];
         
         const isCorrect = (answerIndex === questions[qIndex].answer);
+        
+        // คำนวณแรงตั้งต้นที่ควรได้จากความเร็วในการตอบ (50 - 100)
+        const timeTaken = Math.min(15, (Date.now() - player.qStartTime) / 1000);
+        const fullPower = Math.round((50 + (50 * ((15 - timeTaken) / 15))) * 10) / 10;
+        
+        const divider = Math.max(1, Object.values(room.players).filter(p => p.team === player.team).length);
         let power = 0;
+
         if (isCorrect) {
-            const timeTaken = Math.min(15, (Date.now() - player.qStartTime) / 1000);
-            power = Math.round((50 + (50 * ((15 - timeTaken) / 15))) * 10) / 10;
-            const divider = Math.max(1, Object.values(room.players).filter(p => p.team === player.team).length);
+            // ตอบถูก: ใช้แรงเต็มดึงเข้าหาฝั่งตัวเอง
+            power = fullPower;
             const move = (power / 100) * (8 / divider);
             room.ropePosition += (player.team === 'RED' ? -move : move);
-            room.ropePosition = Math.max(0, Math.min(100, room.ropePosition));
+        } else {
+            // ตอบผิด: เสียแรง 25% ให้ฝั่งตรงข้าม (ดึงไปทิศตรงข้าม)
+            power = Math.round((fullPower * 0.25) * 10) / 10;
+            const move = (power / 100) * (8 / divider);
+            room.ropePosition += (player.team === 'RED' ? move : -move);
         }
 
-        player.qIndex = (qIndex + 1) % questions.length; player.qStartTime = Date.now();
+        room.ropePosition = Math.max(0, Math.min(100, room.ropePosition));
+
+        player.qIndex = (qIndex + 1) % questions.length; 
+        player.qStartTime = Date.now();
+
         socket.emit('answer_feedback', { isCorrect, power, nextQIndex: player.qIndex, nextQData: questions[player.qIndex] });
         io.to(roomCode).emit('update_rope', { ropePosition: room.ropePosition });
         checkWinCon(roomCode);
