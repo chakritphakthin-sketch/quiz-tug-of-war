@@ -28,8 +28,9 @@
         .quiz-overlay { position: absolute; bottom: 15px; left: 12px; right: 12px; background: rgba(15, 23, 42, 0.95); border: 2px solid #38bdf8; border-radius: 20px; padding: 15px; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
         .q-title { font-size: 1.1em; font-weight: bold; margin-bottom: 12px; text-align: center; color: #fff; }
         .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .btn-choice { background: #1e293b; border: 2px solid #475569; color: white; padding: 14px 8px; font-size: 1em; font-family: 'Kanit'; font-weight: bold; border-radius: 12px; }
+        .btn-choice { background: #1e293b; border: 2px solid #475569; color: white; padding: 14px 8px; font-size: 1em; font-family: 'Kanit'; font-weight: bold; border-radius: 12px; cursor: pointer;}
         .btn-choice.selected { background: #facc15; color: #000; border-color: #fff; }
+        .btn-choice:disabled { opacity: 0.7; cursor: not-allowed; } /* ดีไซน์ตอนล็อคปุ่มกันเบิ้ล */
 
         .stage-viewport { position: absolute; inset: 0; background: #4d9e00; overflow: hidden; z-index: 10; }
         .world-camera { position: absolute; inset: 0; transform-origin: center center; will-change: transform; }
@@ -149,6 +150,7 @@
         let currentRoomCode = '';
         let mySocketId = '';
         let isRejoining = false;
+        let isAnswerLocked = false; // ตัวแปรสำหรับล็อคปุ่มกันกดเบิ้ล
 
         let targetCameraX = 0;
         let currentCameraX = 0;
@@ -182,6 +184,12 @@
         function switchTeamDirect(targetTeam) { if(currentRoomCode) socket.emit('switch_team_direct', { roomCode: currentRoomCode, targetTeam }); }
 
         socket.on('join_error', msg => alert(msg));
+        
+        socket.on('kicked', () => {
+            alert('คุณถูกเตะออกจากห้อง!');
+            window.location.reload(); // รีเฟรชหน้าให้เด้งออกทันที
+        });
+
         socket.on('join_success', (data) => {
             currentRoomCode = data.roomCode;
             document.getElementById('join-modal').style.display = 'none';
@@ -237,16 +245,19 @@
 
         socket.on('timer_tick', (t) => document.getElementById('timer').innerText = t < 10 ? `0${t}` : t);
 
+        // รีเซ็ตการกดตอนข้อใหม่มา
         socket.on('new_question', (qData) => {
+            isAnswerLocked = false; 
             document.getElementById('q-text').innerText = qData.q;
             const choicesCount = qData.choices.length;
+            
             for (let i = 0; i < 4; i++) {
                 const btn = document.getElementById(`c${i}`);
                 if (i < choicesCount) {
                     btn.innerText = qData.choices[i];
                     btn.style.display = 'block';
                     btn.disabled = false;
-                    btn.className = 'btn-choice';
+                    btn.className = 'btn-choice'; // รีเซ็ตคลาส
                 } else {
                     btn.style.display = 'none';
                 }
@@ -254,8 +265,14 @@
         });
 
         function sendAns(idx) {
+            if (isAnswerLocked) return; // กันกดเบิ้ล
+            isAnswerLocked = true; // ล็อคปุ่มทันที
+            
             socket.emit('submit_answer', { roomCode: currentRoomCode, answerIndex: idx });
-            for (let i = 0; i < 4; i++) document.getElementById(`c${i}`).disabled = true;
+            
+            for (let i = 0; i < 4; i++) {
+                document.getElementById(`c${i}`).disabled = true; // ล็อคการแสดงผล
+            }
             document.getElementById(`c${idx}`).classList.add('selected');
         }
 
