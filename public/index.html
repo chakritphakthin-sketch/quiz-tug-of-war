@@ -5,69 +5,91 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Quiz Tug of War - Player</title>
     <script src="/socket.io/socket.io.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700;900&family=Orbitron:wght@900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Kanit', sans-serif; background: #0f172a; color: white; min-height: 100vh; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        body { font-family: 'Kanit', sans-serif; background: #0f172a; color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-        .card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 25px; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.5); }
-
-        input { width: 100%; padding: 16px; font-size: 1.2em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; border: 2px solid #38bdf8; background: rgba(0,0,0,0.4); color: #fff; margin-bottom: 15px; text-align: center; outline: none; }
-        input:focus { border-color: #00ffcc; }
-
+        #setup-container { padding: 20px; display: flex; flex-direction: column; justify-content: center; height: 100%; max-width: 500px; margin: 0 auto; width: 100%; }
+        .card { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 25px; text-align: center; }
+        input { width: 100%; padding: 16px; font-size: 1.2em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; border: 2px solid #38bdf8; background: rgba(0,0,0,0.4); color: #fff; margin-bottom: 15px; text-align: center; }
         .btn-3d { width: 100%; padding: 18px; font-size: 1.4em; font-family: 'Kanit'; font-weight: 900; border: none; border-radius: 16px; margin-bottom: 12px; color: white; cursor: pointer; }
-        .team-red { background: linear-gradient(180deg, #ff4d4d, #d10000); box-shadow: 0 5px 0 #8a0000; }
-        .team-blue { background: linear-gradient(180deg, #4da6ff, #0066cc); box-shadow: 0 5px 0 #004080; }
+        .team-red { background: linear-gradient(180deg, #ff4d4d, #d10000); }
+        .team-blue { background: linear-gradient(180deg, #4da6ff, #0066cc); }
 
-        #quiz-screen, #result-screen, #waiting-screen { display: none; width: 100%; max-width: 450px; }
+        #game-container { display: none; flex-direction: column; height: 100vh; }
+        
+        .mini-arena { flex: 0 0 40%; background: radial-gradient(circle at center, #1e1e38, #05050a); position: relative; display: flex; flex-direction: column; border-bottom: 3px solid #334155; }
+        .arena-header { display: flex; justify-content: space-between; padding: 10px 15px; font-weight: bold; background: rgba(0,0,0,0.5); z-index: 10; font-size: 1.1em; }
+        
+        .rope-system { position: absolute; top: 60%; left: 0; right: 0; height: 10px; }
+        .rope-line { width: 100%; height: 8px; background: repeating-linear-gradient(45deg, #d4a373, #d4a373 5px, #a8794d 5px, #a8794d 10px); position: relative; }
+        .rope-knot { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 35px; height: 35px; background: #facc15; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 10px #facc15; transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); display: flex; justify-content: center; align-items: center; font-size: 1em; z-index: 20;}
+        
+        .danger-left { position: absolute; left: 0; width: 15%; height: 100%; background: linear-gradient(90deg, rgba(255,0,0,0.4), transparent); border-right: 2px dashed red; }
+        .danger-right { position: absolute; right: 0; width: 15%; height: 100%; background: linear-gradient(-90deg, rgba(0,100,255,0.4), transparent); border-left: 2px dashed #00aaff; }
 
-        .q-box { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 18px; font-size: 1.3em; font-weight: bold; margin-bottom: 20px; }
-        .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 20px 10px; font-size: 1.2em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; }
+        .quiz-section { flex: 1; padding: 15px; background: #0f172a; display: flex; flex-direction: column; position: relative; }
+        .q-box { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 12px; font-size: 1.2em; font-weight: bold; margin-bottom: 15px; text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center; }
+        
+        .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; }
+        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 15px 10px; font-size: 1.1em; font-family: 'Kanit'; font-weight: bold; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; transition: 0.2s; }
         .choice-btn.selected { background: #facc15; color: #000; border-color: #fff; }
+
+        .floating-power { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 3em; font-weight: 900; color: #facc15; text-shadow: 0 0 20px rgba(250,204,21,0.8); opacity: 0; pointer-events: none; z-index: 100; }
+        @keyframes floatUp {
+            0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); }
+            20% { opacity: 1; transform: translate(-50%, -20px) scale(1.2); }
+            80% { opacity: 1; transform: translate(-50%, -60px) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -80px) scale(0.8); }
+        }
+
+        #round-status { text-align: center; font-size: 1.1em; font-weight: bold; color: #facc15; padding: 5px; }
     </style>
+    <script>
+        if (new URLSearchParams(window.location.search).get('admin') === 'true') {
+            window.location.href = '/host.html?admin=true';
+        }
+    </script>
 </head>
 <body>
-
-    <!-- Step 1: Join Room Form -->
-    <div id="join-screen" class="card">
-        <h2 style="color: #38bdf8; margin-bottom: 15px;">🎮 เข้าสู่การแข่งขัน</h2>
-        <input type="number" id="pin-input" placeholder="กรอกรหัส PIN 6 หลัก" maxlength="6">
-        <input type="text" id="name-input" placeholder="ตั้งชื่อตัวละคร..." maxlength="12">
-        
-        <p style="margin-bottom: 10px; font-weight: bold;">เลือกทีมที่ต้องการเข้าร่วม</p>
-        <button class="btn-3d team-red" onclick="joinRoom('RED')">🔴 TEAM RED</button>
-        <button class="btn-3d team-blue" onclick="joinRoom('BLUE')">🔵 TEAM BLUE</button>
-    </div>
-
-    <!-- Step 2: Waiting Screen -->
-    <div id="waiting-screen" class="card">
-        <h1 id="welcome-text" style="font-size: 2em; margin-bottom: 10px;"></h1>
-        <p id="slot-info" style="font-size: 1.2em; color: #facc15; margin-bottom: 15px;"></p>
-        <p style="color: #cbd5e1;">ยึดตำแหน่งบนหน้าผาเรียบร้อย!</p>
-        <h3 style="color: #00ffcc; margin-top: 15px;">⏳ รอ Host กดเริ่มแข่ง...</h3>
-    </div>
-
-    <!-- Step 3: Quiz Screen -->
-    <div id="quiz-screen">
-        <div style="display:flex; justify-size:space-between; margin-bottom:15px; font-size:1.2em; font-weight:bold;">
-            <span id="my-team-text">TEAM</span>
-            <span style="color:#facc15;">⏱️ <span id="timer">15</span></span>
-        </div>
-        <div class="q-box" id="q-text">กำลังโหลดโจทย์...</div>
-        <div class="grid-choices">
-            <button class="choice-btn" id="c0" onclick="sendAns(0)">A</button>
-            <button class="choice-btn" id="c1" onclick="sendAns(1)">B</button>
-            <button class="choice-btn" id="c2" onclick="sendAns(2)">C</button>
-            <button class="choice-btn" id="c3" onclick="sendAns(3)">D</button>
+    <div id="setup-container">
+        <div class="card">
+            <h2 style="color: #38bdf8; margin-bottom: 15px;">🎮 เข้าสู่การแข่งขัน</h2>
+            <input type="number" id="pin-input" placeholder="รหัส PIN 6 หลัก" maxlength="6">
+            <input type="text" id="name-input" placeholder="ตั้งชื่อตัวละคร..." maxlength="12">
+            <button class="btn-3d team-red" onclick="joinRoom('RED')">🔴 TEAM RED</button>
+            <button class="btn-3d team-blue" onclick="joinRoom('BLUE')">🔵 TEAM BLUE</button>
         </div>
     </div>
 
-    <!-- Step 4: Result Screen -->
-    <div id="result-screen" class="card">
-        <h1 id="res-icon" style="font-size: 4em;"></h1>
-        <h2 id="res-title"></h2>
-        <h1 id="res-power" style="color: #facc15; font-size: 3em; margin-top: 15px;">💪 +0</h1>
+    <div id="game-container">
+        <div class="mini-arena">
+            <div class="arena-header">
+                <span style="color: #ff4d4d;">🔴 <span id="score-red">0</span></span>
+                <span>⏱️ <span id="timer" style="color:#facc15; font-size:1.2em;">15</span></span>
+                <span style="color: #4da6ff;"><span id="score-blue">0</span> 🔵</span>
+            </div>
+            <div class="danger-left"></div>
+            <div class="danger-right"></div>
+            <div class="rope-system">
+                <div class="rope-line">
+                    <div class="rope-knot" id="mini-knot">⚡</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="quiz-section">
+            <div id="round-status">รอเริ่มการแข่งขัน...</div>
+            <div class="q-box" id="q-text">กำลังโหลดโจทย์...</div>
+            <div class="grid-choices">
+                <button class="choice-btn" id="c0" onclick="sendAns(0)">-</button>
+                <button class="choice-btn" id="c1" onclick="sendAns(1)">-</button>
+                <button class="choice-btn" id="c2" onclick="sendAns(2)">-</button>
+                <button class="choice-btn" id="c3" onclick="sendAns(3)">-</button>
+            </div>
+            <div class="floating-power" id="float-power">💪 +0</div>
+        </div>
     </div>
 
     <script>
@@ -78,34 +100,28 @@
         function joinRoom(team) {
             const pin = document.getElementById('pin-input').value;
             const name = document.getElementById('name-input').value;
-
-            if (!pin || pin.length !== 6) return alert('กรุณากรอกรหัส PIN ให้ครบ 6 หลัก!');
-            if (!name.trim()) return alert('กรุณาตั้งชื่อตัวละคร!');
-
+            if (!pin || pin.length !== 6) return alert('กรอก PIN 6 หลัก!');
+            if (!name.trim()) return alert('ตั้งชื่อด้วยครับ!');
             myTeam = team;
             currentRoomCode = pin;
             socket.emit('join_room', { roomCode: pin, name, team });
         }
 
         socket.on('join_error', (msg) => alert(msg));
-
+        
         socket.on('join_success', (data) => {
-            document.getElementById('join-screen').style.display = 'none';
-            document.getElementById('waiting-screen').style.display = 'block';
-
-            document.getElementById('welcome-text').innerText = data.name;
-            document.getElementById('welcome-text').style.color = data.team === 'RED' ? '#ff4d4d' : '#4da6ff';
-            document.getElementById('slot-info').innerText = `ประจำตำแหน่งช่องที่ ${data.slot + 1} (${data.team === 'RED' ? 'ทีมแดง' : 'ทีมน้ำเงิน'})`;
+            document.getElementById('setup-container').style.display = 'none';
+            document.getElementById('game-container').style.display = 'flex';
+            document.getElementById('round-status').innerText = '✅ เข้าห้องสำเร็จ รอ Host เริ่มเกม...';
         });
 
         socket.on('new_question', (data) => {
-            document.getElementById('waiting-screen').style.display = 'none';
-            document.getElementById('result-screen').style.display = 'none';
-            document.getElementById('quiz-screen').style.display = 'block';
-
+            document.getElementById('round-status').innerText = `รอบที่ ${data.round} / ${data.maxRounds}`;
+            document.getElementById('score-red').innerText = data.redWins;
+            document.getElementById('score-blue').innerText = data.blueWins;
             document.getElementById('q-text').innerText = data.questionData.q;
-            document.getElementById('my-team-text').innerText = myTeam === 'RED' ? '🔴 RED TEAM' : '🔵 BLUE TEAM';
-
+            document.getElementById('mini-knot').style.left = '50%';
+            
             for (let i = 0; i < 4; i++) {
                 const btn = document.getElementById(`c${i}`);
                 btn.innerText = data.questionData.choices[i];
@@ -115,7 +131,11 @@
         });
 
         socket.on('timer_tick', (t) => {
-            document.getElementById('timer').innerText = t < 10 ? `0${t}` : t;
+            document.getElementById('timer').innerText = t;
+        });
+
+        socket.on('update_rope', (data) => {
+            document.getElementById('mini-knot').style.left = `${data.ropePosition}%`;
         });
 
         function sendAns(idx) {
@@ -126,13 +146,32 @@
             document.getElementById(`c${idx}`).classList.add('selected');
         }
 
-        socket.on('answer_result', (data) => {
-            document.getElementById('quiz-screen').style.display = 'none';
-            document.getElementById('result-screen').style.display = 'block';
+        socket.on('answer_result_mini', (data) => {
+            const floatEl = document.getElementById('float-power');
+            if (data.isCorrect) {
+                floatEl.innerText = `💪 +${data.power}`;
+                floatEl.style.color = '#00ffcc';
+            } else {
+                floatEl.innerText = `❌ พลาด!`;
+                floatEl.style.color = '#ff4d4d';
+            }
+            floatEl.style.animation = 'none';
+            void floatEl.offsetWidth; 
+            floatEl.style.animation = 'floatUp 1.5s ease-out forwards';
+        });
 
-            document.getElementById('res-icon').innerText = data.isCorrect ? '🎯' : '❌';
-            document.getElementById('res-title').innerText = data.isCorrect ? 'ตอบถูกต้อง!' : 'ตอบผิด!';
-            document.getElementById('res-power').innerText = `💪 +${data.power}`;
+        socket.on('question_end', (data) => {
+            document.getElementById('q-text').innerText = data.detail;
+            document.getElementById('score-red').innerText = data.redWins;
+            document.getElementById('score-blue').innerText = data.blueWins;
+            for (let i = 0; i < 4; i++) {
+                document.getElementById(`c${i}`).disabled = true;
+            }
+        });
+
+        socket.on('game_over', (data) => {
+            document.getElementById('round-status').innerText = "🏁 จบการแข่งขัน!";
+            document.getElementById('q-text').innerText = `🔴 ทีมแดงชนะ ${data.redWins} ตา\n🔵 ทีมน้ำเงินชนะ ${data.blueWins} ตา`;
         });
     </script>
 </body>
