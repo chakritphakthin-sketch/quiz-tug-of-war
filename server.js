@@ -5,22 +5,33 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+    cors: { origin: "*" }
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 const MAX_PER_TEAM = 16;
+const ROUND_TIME = 60; // ความยาวต่อรอบ 60 วินาที
 const rooms = {};
 
+// คลังคำถามวิชาการ/ความรู้ทั่วไป (ระบบจะสุ่มส่งให้ผู้เล่นตอบได้เรื่อยๆ ไม่มีหมด)
 const questions = [
-    { q: "กระแสไฟฟ้ามีหน่วยเป็นอะไร?", choices: ["Volt", "Ampere", "Ohm", "Watt"], answer: 1 },
-    { q: "เมืองหลวงของประเทศไทยคือ?", choices: ["เชียงใหม่", "ภูเก็ต", "กรุงเทพฯ", "พัทยา"], answer: 2 },
-    { q: "โลกหมุนรอบตัวเองใช้เวลาเท่าไร?", choices: ["12 ชั่วโมง", "24 ชั่วโมง", "30 วัน", "365 วัน"], answer: 1 },
-    { q: "ข้อใดคือสัตว์เลี้ยงลูกด้วยนม?", choices: ["ฉลาม", "จระเข้", "วาฬ", "เต่า"], answer: 2 },
-    { q: "น้ำประกอบด้วยธาตุอะไรบ้าง?", choices: ["H และ O", "C และ O", "N และ O", "H และ C"], answer: 0 },
-    { q: "ดาวเคราะห์ที่อยู่ใกล้ดวงอาทิตย์ที่สุด?", choices: ["ดาวพุธ", "ดาวศุกร์", "โลก", "ดาวอังคาร"], answer: 0 },
-    { q: "ข้อใดคือวิตามินที่ได้จากแสงแดด?", choices: ["Vitamin A", "Vitamin C", "Vitamin D", "Vitamin K"], answer: 2 }
+    { q: "กระแสไฟฟ้ามีหน่วยวัดเป็นอะไร?", choices: ["Volt", "Ampere", "Ohm", "Watt"], answer: 1 },
+    { q: "เมืองหลวงของประเทศไทยคือเมืองใด?", choices: ["เชียงใหม่", "ภูเก็ต", "กรุงเทพมหานคร", "พัทยา"], answer: 2 },
+    { q: "โลกหมุนรอบตัวเองใช้เวลากี่ชั่วโมง?", choices: ["12 ชั่วโมง", "24 ชั่วโมง", "30 วัน", "365 วัน"], answer: 1 },
+    { q: "ข้อใดต่อไปนี้จัดเป็นสัตว์เลี้ยงลูกด้วยนม?", choices: ["ฉลาม", "จระเข้", "วาฬ", "เต่าทะเล"], answer: 2 },
+    { q: "น้ำบริสุทธิ์ (H2O) ประกอบด้วยธาตุใดบ้าง?", choices: ["H และ O", "C และ O", "N และ O", "H และ C"], answer: 0 },
+    { q: "ดาวเคราะห์ดวงใดมีขนาดใหญ่ที่สุดในระบบสุริยะ?", choices: ["โลก", "ดาวอังคาร", "ดาวพฤหัสบดี", "ดาวเสาร์"], answer: 2 },
+    { q: "สัตว์ชนิดใดมีแปดขา?", choices: ["มด", "แมลงวัน", "แมงมุม", "ผึ้ง"], answer: 2 },
+    { q: "ธาตุที่มีสัญลักษณ์เคมีว่า 'Fe' คืออะไร?", choices: ["ทองแดง", "ทองคำ", "เหล็ก", "สังกะสี"], answer: 2 },
+    { q: "แสงเดินทางด้วยความเร็วประมาณเท่าใด?", choices: ["300,000 กม./วิ", "150,000 กม./วิ", "1,000,000 กม./วิ", "30,000 กม./วิ"], answer: 0 },
+    { q: "อวัยวะใดของมนุษย์ทำหน้าที่สูบฉีดเลือด?", choices: ["ปอด", "ตับ", "หัวใจ", "ไต"], answer: 2 }
 ];
+
+function getRandomQuestion() {
+    return questions[Math.floor(Math.random() * questions.length)];
+}
 
 function generateRoomCode() {
     let code;
@@ -31,307 +42,275 @@ function generateRoomCode() {
 }
 
 io.on('connection', (socket) => {
+
+    // 1. Host สร้างห้อง
     socket.on('create_room', () => {
         const roomCode = generateRoomCode();
         rooms[roomCode] = {
             hostId: socket.id,
             players: {},
-            state: 'waiting', // waiting, playing, round_end, finished
-            round: 1,
-            matchTimeLeft: 60,
+            state: 'waiting',
             ropePosition: 50,
-            redTotalPower: 0,
-            blueTotalPower: 0,
-            currentQIndex: 0
+            botCount: 0,
+            roundNumber: 1
         };
         socket.join(roomCode);
         socket.emit('room_created', { roomCode });
     });
 
+    // 2. ผู้เล่นเข้าร่วมห้อง หรือ สลับทีม Real-time
     socket.on('join_room', ({ roomCode, name, team }) => {
         const room = rooms[roomCode];
-        if (!room) return socket.emit('join_error', 'ไม่พบห้องนี้!');
-        if (room.state !== 'waiting') return socket.emit('join_error', 'เกมกำลังแข่งขันอยู่!');
+        if (!room) return socket.emit('join_error', 'ไม่พบรหัสห้องนี้!');
+        if (room.state !== 'waiting') return socket.emit('join_error', 'การแข่งขันกำลังดำเนินอยู่!');
 
-        const teamPlayers = Object.values(room.players).filter(p => p.team === team);
+        const teamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
         if (teamPlayers.length >= MAX_PER_TEAM) {
             return socket.emit('join_error', `ทีม ${team === 'RED' ? 'แดง' : 'น้ำเงิน'} เต็มแล้ว!`);
         }
 
+        // หา Slot สลับฟันปลาว่าง
         const takenSlots = teamPlayers.map(p => p.slot);
         let freeSlot = 0;
         while (takenSlots.includes(freeSlot)) freeSlot++;
 
         room.players[socket.id] = {
             id: socket.id,
-            name: name.trim() || 'นักสู้ไร้นาม',
+            name: name.trim() || 'Player',
             team: team,
             slot: freeSlot,
-            isBot: false,
-            status: 'ALIVE', // ALIVE, ELIMINATED
-            hasAnswered: false
+            status: 'active',
+            isBot: false
         };
 
         socket.join(roomCode);
-        socket.emit('join_success', { name: room.players[socket.id].name, team, roomCode, slot: freeSlot });
-        broadcastLobby(roomCode);
+        socket.emit('join_success', { name: room.players[socket.id].name, team, slot: freeSlot, roomCode });
+        updateLobby(roomCode);
     });
 
-    socket.on('switch_team', ({ roomCode }) => {
+    // 3. สลับทีมจากหน้าสนามยิงตรง
+    socket.on('switch_team_direct', ({ roomCode, targetTeam }) => {
         const room = rooms[roomCode];
         if (!room || room.state !== 'waiting') return;
         const player = room.players[socket.id];
-        if (!player || player.status === 'ELIMINATED') return;
+        if (!player || player.team === targetTeam) return;
 
-        const newTeam = player.team === 'RED' ? 'BLUE' : 'RED';
-        const teamPlayers = Object.values(room.players).filter(p => p.team === newTeam);
-        if (teamPlayers.length >= MAX_PER_TEAM) return socket.emit('join_error', 'ทีมฝั่งนั้นเต็มแล้ว!');
+        const targetTeamPlayers = Object.values(room.players).filter(p => p.team === targetTeam && p.status === 'active');
+        if (targetTeamPlayers.length >= MAX_PER_TEAM) {
+            return socket.emit('join_error', `ทีมเต็มแล้ว ไม่สามารถย้ายได้!`);
+        }
 
-        const takenSlots = teamPlayers.map(p => p.slot);
+        const takenSlots = targetTeamPlayers.map(p => p.slot);
         let freeSlot = 0;
         while (takenSlots.includes(freeSlot)) freeSlot++;
 
-        player.team = newTeam;
+        player.team = targetTeam;
         player.slot = freeSlot;
 
-        socket.emit('team_switched', { team: newTeam, slot: freeSlot });
-        broadcastLobby(roomCode);
+        socket.emit('team_switched', { team: targetTeam, slot: freeSlot });
+        updateLobby(roomCode);
     });
 
-    // เติมบอทให้ทั้งสองฝั่งเท่ากัน
-    socket.on('fill_bots', ({ roomCode }) => {
+    // 4. ผู้ผ่านเข้ารอบเลือกทีมใหม่
+    socket.on('rejoin_team', ({ roomCode, team }) => {
         const room = rooms[roomCode];
-        if (!room || room.hostId !== socket.id) return;
+        if (!room || room.state !== 'waiting') return;
+        const player = room.players[socket.id];
+        if (!player || player.status !== 'survived') return;
 
-        let redPlayers = Object.values(room.players).filter(p => p.team === 'RED' && p.status === 'ALIVE');
-        let bluePlayers = Object.values(room.players).filter(p => p.team === 'BLUE' && p.status === 'ALIVE');
+        const teamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
+        if (teamPlayers.length >= MAX_PER_TEAM) return socket.emit('join_error', `ทีมเต็มแล้ว!`);
 
-        const targetCount = Math.max(redPlayers.length, bluePlayers.length, 2);
+        let freeSlot = 0;
+        while (teamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
 
-        // เติมทีมแดง
-        while (redPlayers.length < targetCount && redPlayers.length < MAX_PER_TEAM) {
-            const botId = 'bot_red_' + Math.random().toString(36).substr(2, 5);
-            const takenSlots = redPlayers.map(p => p.slot);
-            let freeSlot = 0;
-            while (takenSlots.includes(freeSlot)) freeSlot++;
+        player.team = team;
+        player.slot = freeSlot;
+        player.status = 'active';
 
-            room.players[botId] = {
-                id: botId,
-                name: `🤖 BOT-RED-${freeSlot + 1}`,
-                team: 'RED',
-                slot: freeSlot,
-                isBot: true,
-                status: 'ALIVE',
-                hasAnswered: false
-            };
-            redPlayers = Object.values(room.players).filter(p => p.team === 'RED' && p.status === 'ALIVE');
-        }
-
-        // เติมทีมน้ำเงิน
-        while (bluePlayers.length < targetCount && bluePlayers.length < MAX_PER_TEAM) {
-            const botId = 'bot_blue_' + Math.random().toString(36).substr(2, 5);
-            const takenSlots = bluePlayers.map(p => p.slot);
-            let freeSlot = 0;
-            while (takenSlots.includes(freeSlot)) freeSlot++;
-
-            room.players[botId] = {
-                id: botId,
-                name: `🤖 BOT-BLUE-${freeSlot + 1}`,
-                team: 'BLUE',
-                slot: freeSlot,
-                isBot: true,
-                status: 'ALIVE',
-                hasAnswered: false
-            };
-            bluePlayers = Object.values(room.players).filter(p => p.team === 'BLUE' && p.status === 'ALIVE');
-        }
-
-        broadcastLobby(roomCode);
+        socket.emit('join_success', { name: player.name, team, slot: freeSlot, roomCode });
+        updateLobby(roomCode);
     });
 
+    // 5. เพิ่มบอทเติมเต็มทีม
+    socket.on('add_bot', ({ roomCode, team }) => {
+        const room = rooms[roomCode];
+        if (!room || room.hostId !== socket.id || room.state !== 'waiting') return;
+
+        const teamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
+        if (teamPlayers.length >= MAX_PER_TEAM) return;
+
+        let freeSlot = 0;
+        while (teamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
+
+        room.botCount++;
+        const botId = `bot_${Date.now()}_${room.botCount}`;
+        room.players[botId] = {
+            id: botId,
+            name: `🤖 บอท ${room.botCount}`,
+            team: team,
+            slot: freeSlot,
+            status: 'active',
+            isBot: true
+        };
+
+        updateLobby(roomCode);
+    });
+
+    // 6. เริ่มการแข่งขันประจำรอบ (60 วิ)
     socket.on('start_match', ({ roomCode }) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
 
-        startRound(roomCode);
-    });
-
-    function startRound(roomCode) {
-        const room = rooms[roomCode];
-        if (!room) return;
-
         room.state = 'playing';
-        room.matchTimeLeft = 60;
         room.ropePosition = 50;
-        room.redTotalPower = 0;
-        room.blueTotalPower = 0;
-        room.currentQIndex = Math.floor(Math.random() * questions.length);
 
-        io.to(roomCode).emit('match_started', {
-            round: room.round,
-            questionData: questions[room.currentQIndex]
-        });
+        io.to(roomCode).emit('match_started');
 
-        // Loop นับเวลาแข่ง 60 วินาที
-        clearInterval(room.matchInterval);
-        room.matchInterval = setInterval(() => {
-            room.matchTimeLeft--;
-            io.to(roomCode).emit('match_timer_tick', room.matchTimeLeft);
-
-            // สุ่มเปลี่ยนโจทย์ทุกๆ 7 วินาที
-            if (room.matchTimeLeft % 7 === 0 && room.matchTimeLeft > 0) {
-                room.currentQIndex = (room.currentQIndex + 1) % questions.length;
-                for (let id in room.players) room.players[id].hasAnswered = false;
-                
-                io.to(roomCode).emit('new_question', {
-                    questionData: questions[room.currentQIndex]
-                });
+        // แจกโจทย์ข้อแรกให้ผู้เล่นทุกคนตอบส่วนตัว
+        for (let pId in room.players) {
+            const p = room.players[pId];
+            if (!p.isBot && p.status === 'active') {
+                io.to(pId).emit('new_question', getRandomQuestion());
             }
+        }
 
-            // จำลองบอทช่วยตอบโจทย์
-            triggerBotAnswers(roomCode);
+        // ลูป AI บอทช่วยดึงเชือกตามสถิติความถูกต้อง
+        room.botInterval = setInterval(() => {
+            if (room.state !== 'playing') return;
+            let redForce = 0;
+            let blueForce = 0;
 
-            if (room.matchTimeLeft <= 0) {
-                clearInterval(room.matchInterval);
+            Object.values(room.players).forEach(p => {
+                if (p.isBot && p.status === 'active') {
+                    if (Math.random() > 0.45) { // บอทมีอัตราตอบถูก/ดึงเชือก 55%
+                        if (p.team === 'RED') redForce += 1.8;
+                        else blueForce += 1.8;
+                    }
+                }
+            });
+
+            if (redForce > 0 || blueForce > 0) {
+                room.ropePosition -= (redForce - blueForce);
+                if (room.ropePosition < 5) room.ropePosition = 5;
+                if (room.ropePosition > 95) room.ropePosition = 95;
+
+                io.to(roomCode).emit('update_rope', { ropePosition: room.ropePosition });
+            }
+        }, 1500);
+
+        // ตัวนับเวลาถอยหลัง 60 วินาที
+        let timeLeft = ROUND_TIME;
+        clearInterval(room.timerInterval);
+        room.timerInterval = setInterval(() => {
+            timeLeft--;
+            io.to(roomCode).emit('timer_tick', timeLeft);
+
+            if (timeLeft <= 0) {
+                clearInterval(room.timerInterval);
+                clearInterval(room.botInterval);
                 endRound(roomCode);
             }
         }, 1000);
-    }
+    });
 
-    function triggerBotAnswers(roomCode) {
-        const room = rooms[roomCode];
-        if (!room) return;
-
-        Object.values(room.players).forEach(p => {
-            if (p.isBot && p.status === 'ALIVE' && !p.hasAnswered && Math.random() < 0.4) {
-                p.hasAnswered = true;
-                const isCorrect = Math.random() < 0.65; // ความแม่นยำบอท 65%
-                const power = isCorrect ? Math.floor(Math.random() * 50) + 30 : 0;
-
-                if (p.team === 'RED') {
-                    room.redTotalPower += power;
-                    room.ropePosition -= (power * 0.08);
-                } else {
-                    room.blueTotalPower += power;
-                    room.ropePosition += (power * 0.08);
-                }
-
-                clampRope(room);
-                io.to(roomCode).emit('update_rope', {
-                    ropePosition: room.ropePosition,
-                    lastPuller: { name: p.name, team: p.team, power }
-                });
-            }
-        });
-    }
-
-    socket.on('submit_answer', ({ roomCode, answerIndex }) => {
+    // 7. ผู้เล่นส่งคำตอบ (ไหลต่อเนื่องไม่หยุด)
+    socket.on('submit_answer', ({ roomCode, answerIndex, qText }) => {
         const room = rooms[roomCode];
         if (!room || room.state !== 'playing') return;
 
         const player = room.players[socket.id];
-        if (!player || player.hasAnswered || player.status === 'ELIMINATED') return;
+        if (!player || player.status !== 'active') return;
 
-        player.hasAnswered = true;
-        const isCorrect = (answerIndex === questions[room.currentQIndex].answer);
-        const power = isCorrect ? Math.floor(Math.random() * 40) + 60 : 0;
+        const originalQ = questions.find(q => q.q === qText);
+        const isCorrect = originalQ && (answerIndex === originalQ.answer);
+        let power = isCorrect ? 3.5 : 0;
 
-        if (player.team === 'RED') {
-            room.redTotalPower += power;
-            room.ropePosition -= (power * 0.08);
-        } else {
-            room.blueTotalPower += power;
-            room.ropePosition += (power * 0.08);
+        if (isCorrect) {
+            if (player.team === 'RED') room.ropePosition -= power;
+            else room.ropePosition += power;
+
+            if (room.ropePosition < 5) room.ropePosition = 5;
+            if (room.ropePosition > 95) room.ropePosition = 95;
         }
 
-        clampRope(room);
         socket.emit('answer_result', { isCorrect, power });
-
         io.to(roomCode).emit('update_rope', {
             ropePosition: room.ropePosition,
-            lastPuller: { name: player.name, team: player.team, power }
+            lastPuller: { id: player.id, name: player.name, team: player.team }
         });
+
+        // ส่งคำถามใหม่ถัดไปทันทีหลังจากส่งคำตอบแล้ว 1 วินาที
+        setTimeout(() => {
+            if (room.state === 'playing' && player.status === 'active') {
+                socket.emit('new_question', getRandomQuestion());
+            }
+        }, 1000);
     });
 
-    function clampRope(room) {
-        if (room.ropePosition < 5) room.ropePosition = 5;
-        if (room.ropePosition > 95) room.ropePosition = 95;
-    }
-
+    // 8. ตัดสินผลเมื่อหมดเวลา 60 วินาที (Tournament Elimination)
     function endRound(roomCode) {
         const room = rooms[roomCode];
         if (!room) return;
 
-        // หาผู้ชนะรอบ 60 วิ
-        let winningTeam = 'DRAW';
-        if (room.ropePosition < 50) winningTeam = 'RED';
-        else if (room.ropePosition > 50) winningTeam = 'BLUE';
-        else winningTeam = room.redTotalPower >= room.blueTotalPower ? 'RED' : 'BLUE';
+        // ฝั่งที่ดึงเชือกมาทางฝั่งตัวเองได้มากกว่าเป็นผู้ชนะ (หรือสุ่มกรณี 50/50 เท่ากัน)
+        let winningTeam = 'RED';
+        if (room.ropePosition > 50) winningTeam = 'BLUE';
+        else if (room.ropePosition === 50) winningTeam = Math.random() > 0.5 ? 'RED' : 'BLUE';
 
-        // คัดคนตกรอบ (ทีมแพ้ทั้งหมดตกรอบ)
-        Object.values(room.players).forEach(p => {
-            if (p.status === 'ALIVE' && p.team !== winningTeam) {
-                p.status = 'ELIMINATED';
-                if (!p.isBot && io.sockets.sockets.get(p.id)) {
-                    io.sockets.sockets.get(p.id).emit('eliminated');
-                }
+        let realSurvivors = [];
+
+        for (let pId in room.players) {
+            let p = room.players[pId];
+
+            if (p.isBot) {
+                delete room.players[pId]; // เคลียร์บอทออกเมื่อจบแต่ละรอบ
+                continue;
             }
-        });
 
-        // นับจำนวนมนุษย์ผู้รอดชีวิต
-        const aliveHumans = Object.values(room.players).filter(p => !p.isBot && p.status === 'ALIVE');
+            if (p.team === winningTeam) {
+                p.status = 'survived';
+                p.team = null; // คืนค่าทีมเพื่อให้เลือกใหม่ในรอบถัดไป
+                realSurvivors.push(p);
+            } else {
+                p.status = 'eliminated';
+                io.to(pId).emit('eliminated'); // ส่งไปยังหน้าตกรอบ ขอบคุณที่ร่วมสนุก
+            }
+        }
 
-        if (aliveHumans.length === 1) {
-            // ประกาศแชมเปียน 1 เดียว!
-            const champion = aliveHumans[0];
-            room.state = 'finished';
-            io.to(roomCode).emit('grand_champion', { name: champion.name });
-        } else if (aliveHumans.length === 0) {
-            // กรณีไม่มีคนเหลือเลย ให้สุ่มผู้ชนะจากคนที่รอดในบอท/ผู้เล่นเดิม
-            const lastAlive = Object.values(room.players).filter(p => p.status === 'ALIVE')[0];
-            room.state = 'finished';
-            io.to(roomCode).emit('grand_champion', { name: lastAlive ? lastAlive.name : 'ไม่มีผู้ชนะ' });
-        } else {
-            // ไปรอบถัดไป
-            room.round++;
+        if (realSurvivors.length === 1) {
+            // ได้ผู้รอดชีวิตคนสุดท้าย = CHAMPION 🏆
+            room.state = 'ended';
+            io.to(roomCode).emit('champion', { name: realSurvivors[0].name });
+        } else if (realSurvivors.length > 1) {
+            // ยังเหลือผู้แข่งขันมากกว่า 1 คน ดำเนินการแข่งรอบถัดไป
             room.state = 'waiting';
-            
-            // ลบบอทเก่าออกเพื่อรีเซ็ตจับทีมใหม่
-            Object.keys(room.players).forEach(id => {
-                if (room.players[id].isBot) delete room.players[id];
-            });
-
-            io.to(roomCode).emit('round_ended', {
-                winningTeam,
-                nextRound: room.round,
-                aliveCount: aliveHumans.length
-            });
-            broadcastLobby(roomCode);
+            room.roundNumber++;
+            realSurvivors.forEach(p => io.to(p.id).emit('pick_team_again'));
+            io.to(roomCode).emit('round_end', { winningTeam, survivors: realSurvivors.length, roundNumber: room.roundNumber });
+            updateLobby(roomCode);
+        } else {
+            // ตกรอบหมดทุกคน
+            room.state = 'ended';
+            io.to(roomCode).emit('game_over');
         }
     }
 
-    function broadcastLobby(roomCode) {
-        const room = rooms[roomCode];
-        if (!room) return;
-
-        io.to(roomCode).emit('update_lobby', {
-            players: Object.values(room.players),
-            maxPerTeam: MAX_PER_TEAM,
-            state: room.state,
-            round: room.round
-        });
+    function updateLobby(roomCode) {
+        if (!rooms[roomCode]) return;
+        const activePlayers = Object.values(rooms[roomCode].players).filter(p => p.team !== null && p.status === 'active');
+        io.to(roomCode).emit('update_lobby', { players: activePlayers });
     }
 
     socket.on('disconnect', () => {
         for (let code in rooms) {
-            const room = rooms[code];
-            if (room.players[socket.id]) {
-                delete room.players[socket.id];
-                broadcastLobby(code);
+            if (rooms[code].players[socket.id]) {
+                delete rooms[code].players[socket.id];
+                updateLobby(code);
             }
         }
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`Quiz Tug of War Server Live on Port ${PORT}`));
