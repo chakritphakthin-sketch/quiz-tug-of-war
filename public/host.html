@@ -9,88 +9,75 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Kanit', sans-serif; background: radial-gradient(circle at center top, #1e1e38, #0a0a14); color: white; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
-        /* Secret Lock View */
-        #lock-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; background: #0b0f19; }
-        .lock-box { background: rgba(255,255,255,0.05); border: 2px solid #ef4444; padding: 40px; border-radius: 20px; box-shadow: 0 0 30px rgba(239,68,68,0.3); }
+        #lock-screen { display: flex; align-items: center; justify-content: center; height: 100vh; text-align: center; }
+        #create-screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        .btn-create { padding: 20px 40px; font-size: 2em; font-family: 'Kanit'; font-weight: 900; background: linear-gradient(90deg, #10b981, #059669); color: white; border: none; border-radius: 20px; cursor: pointer; }
 
-        /* Room Creation Control */
-        #create-screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; }
-        .btn-create { padding: 20px 40px; font-size: 2em; font-family: 'Kanit'; font-weight: 900; background: linear-gradient(90deg, #10b981, #059669); color: white; border: none; border-radius: 20px; cursor: pointer; box-shadow: 0 10px 25px rgba(16,185,129,0.4); transition: 0.2s; }
-        .btn-create:hover { transform: scale(1.05); }
-
-        /* Main Game Arena */
         #arena-screen { display: none; flex-direction: column; height: 100vh; }
-        
-        .header { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(255,255,255,0.1); }
-        .pin-badge { font-family: 'Orbitron', sans-serif; font-size: 2.2em; color: #facc15; background: rgba(250,204,21,0.1); padding: 5px 20px; border-radius: 12px; border: 2px solid #facc15; text-shadow: 0 0 10px #facc15; }
+        .header { background: rgba(0, 0, 0, 0.6); padding: 10px 25px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid rgba(255,255,255,0.1); }
+        .pin-badge { font-family: 'Orbitron', sans-serif; font-size: 2em; color: #facc15; background: rgba(250,204,21,0.1); padding: 5px 15px; border-radius: 12px; border: 2px solid #facc15; }
 
-        .btn-start { padding: 12px 30px; font-size: 1.4em; font-family: 'Kanit'; font-weight: 900; background: linear-gradient(90deg, #00c6ff, #0072ff); color: white; border: none; border-radius: 12px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,114,255,0.4); }
+        .btn-start { padding: 10px 25px; font-size: 1.3em; font-family: 'Kanit'; font-weight: 900; background: linear-gradient(90deg, #00c6ff, #0072ff); color: white; border: none; border-radius: 12px; cursor: pointer; }
 
-        .question-box { background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.2); margin: 15px auto; padding: 20px 40px; border-radius: 20px; font-size: 2em; text-align: center; max-width: 85%; }
-        .timer { font-family: 'Orbitron', sans-serif; font-size: 3.5em; color: #00ffcc; text-align: center; text-shadow: 0 0 20px #00ffcc; }
+        .timer-display { font-family: 'Orbitron', sans-serif; font-size: 3em; color: #00ffcc; text-shadow: 0 0 20px #00ffcc; }
 
-        /* 16 Slots Grid per Cliff */
+        /* โซนคำถามของ Host สำหรับกดเล่นขำๆ */
+        .host-quiz-panel { background: rgba(255,255,255,0.05); border: 2px dashed #facc15; margin: 10px 20px; padding: 12px 20px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; }
+        .host-q-title { font-size: 1.2em; color: #facc15; font-weight: bold; margin-bottom: 5px; }
+        .host-choices-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; margin-top: 8px; }
+        .host-choice-btn { background: #334155; color: white; border: none; padding: 8px; border-radius: 8px; font-family: 'Kanit'; font-weight: bold; cursor: pointer; }
+
         .stage { flex: 1; display: flex; position: relative; }
-        .cliff { width: 38%; height: 65%; position: absolute; bottom: 0; padding: 20px; display: flex; flex-direction: column; }
-        .cliff-left { left: 0; background: linear-gradient(160deg, #ff2a5f, #7a001c); border-radius: 0 60px 0 0; border-right: 4px solid #ff4d79; }
-        .cliff-right { right: 0; background: linear-gradient(-160deg, #00d2ff, #003a7a); border-radius: 60px 0 0 0; border-left: 4px solid #33ddff; }
+        .cliff { width: 38%; height: 70%; position: absolute; bottom: 0; padding: 15px; display: flex; flex-direction: column; }
+        .cliff-left { left: 0; background: linear-gradient(160deg, #ff2a5f, #7a001c); border-radius: 0 50px 0 0; border-right: 4px solid #ff4d79; }
+        .cliff-right { right: 0; background: linear-gradient(-160deg, #00d2ff, #003a7a); border-radius: 50px 0 0 0; border-left: 4px solid #33ddff; }
 
-        .grid-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
-        .slot-box { background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2); border-radius: 10px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.8em; }
-        .slot-box.filled { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.4); animation: pop 0.3s; }
-        
-        .avatar-icon { font-size: 1.3em; }
-        .player-name { font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 90%; }
+        .grid-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+        .slot-box { background: rgba(0,0,0,0.3); border: 1px dashed rgba(255,255,255,0.2); border-radius: 8px; height: 50px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.75em; }
+        .slot-box.filled { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.4); }
 
-        /* Rope System */
         .chasm { position: absolute; left: 38%; right: 38%; height: 100%; background: #05050a; z-index: -1; }
-        .rope-system { position: absolute; top: 35%; left: 5%; right: 5%; height: 20px; z-index: 20; }
+        .rope-system { position: absolute; top: 40%; left: 5%; right: 5%; height: 20px; z-index: 20; }
         .rope-line { width: 100%; height: 14px; background: repeating-linear-gradient(45deg, #d4a373, #d4a373 10px, #a8794d 10px, #a8794d 20px); border-radius: 10px; position: relative; }
-        .rope-knot { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 44px; height: 44px; background: #facc15; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 25px #facc15; transition: left 0.3s; display: flex; align-items: center; justify-content: center; font-size: 1.2em; }
-
-        @keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+        .rope-knot { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 44px; height: 44px; background: #facc15; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 25px #facc15; transition: left 0.2s linear; display: flex; align-items: center; justify-content: center; font-size: 1.2em; }
     </style>
 </head>
 <body>
-
-    <!-- 1. หน้าล็อกความปลอดภัย (ถ้าไม่มี ?admin=true) -->
     <div id="lock-screen">
-        <div class="lock-box">
-            <h1 style="font-size: 3em; margin-bottom: 10px;">🔒 ACCESS DENIED</h1>
-            <p style="font-size: 1.2em; color: #94a3b8;">เฉพาะ Host เท่านั้น! กรุณาเติม <code style="color:#facc15;">?admin=true</code> ท้าย URL</p>
-        </div>
+        <h1 style="color:#ef4444;">🔒 เติม ?admin=true ท้าย URL เพื่อเข้าใช้งาน Host</h1>
     </div>
 
-    <!-- 2. หน้าปุ่มกดสร้างห้อง -->
     <div id="create-screen">
         <h1 style="font-size: 3em; margin-bottom: 20px;">🎮 ARENA HOST CONTROL</h1>
-        <button class="btn-create" onclick="createRoom()">➕ กดเพื่อสร้างห้องแข่งขันใหม่</button>
+        <button class="btn-create" onclick="createRoom()">➕ สร้างห้องแข่งขันใหม่</button>
     </div>
 
-    <!-- 3. หน้าจอหลักในการแข่ง -->
     <div id="arena-screen">
         <div class="header">
             <div>
-                <span style="font-size: 1.2em; color: #94a3b8;">ROOM PIN:</span>
+                <span style="color: #94a3b8;">ROOM PIN:</span>
                 <span class="pin-badge" id="display-pin">------</span>
             </div>
+            <div class="timer-display" id="timer-box">100</div>
             <div>
-                <button class="btn-start" id="start-btn" onclick="startMatch()">🚀 กดเริ่มแข่งเลย!</button>
-                <button class="btn-start" id="next-btn" onclick="nextQuestion()" style="display:none; background: #f59e0b;">ข้อถัดไป ➔</button>
+                <button class="btn-start" id="start-btn" onclick="startMatch()">🚀 เริ่มศึกชักเย่อ (100s)</button>
+                <button class="btn-start" id="reset-btn" onclick="resetLobby()" style="display:none; background:#f59e0b;">🔄 กลับไปจัดทีมรอบต่อไป</button>
             </div>
         </div>
 
-        <div class="question-box" id="q-box">รอคนครบ แล้วกดเริ่มแข่งได้เลย...</div>
-        <div class="timer" id="timer-box">15</div>
+        <!-- กล่องควิซสำหรับโฮสต์เล่นขำๆ -->
+        <div class="host-quiz-panel">
+            <div class="host-q-title">👑 HOST FUN QUIZ (ไม่มีผลกับคะแนนผู้เล่น)</div>
+            <div id="host-q-text" style="font-size:1.1em;">กดเริ่มเกมเพื่อดูโจทย์...</div>
+            <div class="host-choices-grid" id="host-choices"></div>
+        </div>
 
         <div class="stage">
-            <!-- ทีมแดง 16 Slots -->
             <div class="cliff cliff-left">
                 <h2>🔴 RED TEAM (<span id="red-count">0</span>/16)</h2>
                 <div class="grid-slots" id="red-slots"></div>
             </div>
 
-            <!-- หุบเหวและเชือก -->
             <div class="chasm"></div>
             <div class="rope-system">
                 <div class="rope-line">
@@ -98,7 +85,6 @@
                 </div>
             </div>
 
-            <!-- ทีมน้ำเงิน 16 Slots -->
             <div class="cliff cliff-right">
                 <h2 style="text-align: right;">BLUE TEAM 🔵 (<span id="blue-count">0</span>/16)</h2>
                 <div class="grid-slots" id="blue-slots"></div>
@@ -110,6 +96,8 @@
         const urlParams = new URLSearchParams(window.location.search);
         const isAdmin = urlParams.get('admin') === 'true';
         let currentRoomCode = '';
+        let hostQuestions = [];
+        let hostQIdx = 0;
 
         if (isAdmin) {
             document.getElementById('lock-screen').style.display = 'none';
@@ -117,10 +105,7 @@
         }
 
         const socket = io();
-
-        function createRoom() {
-            socket.emit('create_room');
-        }
+        function createRoom() { socket.emit('create_room'); }
 
         socket.on('room_created', (data) => {
             currentRoomCode = data.roomCode;
@@ -130,7 +115,6 @@
             initSlots();
         });
 
-        // สร้างช่อง 16 ช่องว่างๆ
         function initSlots() {
             renderEmptySlots('red-slots');
             renderEmptySlots('blue-slots');
@@ -148,62 +132,72 @@
             }
         }
 
-        // อัปเดตเมื่อมีคนเข้าร่วม
         socket.on('update_lobby', (data) => {
             initSlots();
-            let redNum = 0;
-            let blueNum = 0;
-
+            let redNum = 0, blueNum = 0;
             data.players.forEach(p => {
                 const prefix = p.team === 'RED' ? 'red-slots' : 'blue-slots';
                 const slotBox = document.getElementById(`${prefix}-slot-${p.slot}`);
                 if (slotBox) {
                     slotBox.className = 'slot-box filled';
-                    slotBox.innerHTML = `
-                        <div class="avatar-icon">${p.team === 'RED' ? '🏃‍♂️' : '🏃‍♀️'}</div>
-                        <div class="player-name">${p.name}</div>
-                    `;
+                    slotBox.innerHTML = `<div>🏃‍♂️</div><div style="font-weight:bold;">${p.name}</div>`;
                 }
-
                 if (p.team === 'RED') redNum++;
                 if (p.team === 'BLUE') blueNum++;
             });
-
             document.getElementById('red-count').innerText = redNum;
             document.getElementById('blue-count').innerText = blueNum;
         });
 
         function startMatch() {
             socket.emit('start_match', { roomCode: currentRoomCode });
-            document.getElementById('start-btn').style.display = 'none';
-            document.getElementById('next-btn').style.display = 'inline-block';
         }
 
-        function nextQuestion() {
-            socket.emit('next_question', { roomCode: currentRoomCode });
-        }
-
-        socket.on('new_question', (data) => {
-            document.getElementById('q-box').innerText = `ข้อที่ ${data.questionIndex + 1}: ${data.questionData.q}`;
+        function resetLobby() {
+            socket.emit('reset_to_lobby', { roomCode: currentRoomCode });
+            document.getElementById('reset-btn').style.display = 'none';
+            document.getElementById('start-btn').style.display = 'inline-block';
+            document.getElementById('timer-box').innerText = "100";
             document.getElementById('knot').style.left = '50%';
+            document.getElementById('host-q-text').innerText = "เตรียมพร้อมศึกรอบใหม่...";
+            document.getElementById('host-choices').innerHTML = "";
+        }
+
+        socket.on('match_started', (data) => {
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('knot').style.left = '50%';
+            hostQuestions = data.questions;
+            hostQIdx = 0;
+            renderHostQuiz();
         });
 
-        socket.on('timer_tick', (t) => {
-            document.getElementById('timer-box').innerText = t < 10 ? `0${t}` : t;
-        });
+        function renderHostQuiz() {
+            if (!hostQuestions.length) return;
+            const q = hostQuestions[hostQIdx];
+            document.getElementById('host-q-text').innerText = `ข้อ ${hostQIdx+1}: ${q.q}`;
+            const box = document.getElementById('host-choices');
+            box.innerHTML = '';
+            q.choices.forEach((c, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'host-choice-btn';
+                btn.innerText = c;
+                btn.onclick = () => {
+                    if (idx === q.answer) alert("🎉 โฮสต์ตอบถูก! (ไม่มีผลกับชักเย่อ)");
+                    else alert("❌ โฮสต์ตอบผิด!");
+                    hostQIdx = (hostQIdx + 1) % hostQuestions.length;
+                    renderHostQuiz();
+                };
+                box.appendChild(btn);
+            });
+        }
 
-        socket.on('update_rope', (data) => {
-            document.getElementById('knot').style.left = `${data.ropePosition}%`;
-        });
+        socket.on('timer_tick', (t) => { document.getElementById('timer-box').innerText = t; });
+        socket.on('update_rope', (data) => { document.getElementById('knot').style.left = `${data.ropePosition}%`; });
 
-        socket.on('question_end', (data) => {
-            document.getElementById('timer-box').innerText = "หมดเวลา!";
-            document.getElementById('q-box').innerText = `🏆 ทีม ${data.winner} ชนะรอบนี้!`;
-        });
-
-        socket.on('game_over', () => {
-            document.getElementById('q-box').innerText = "🏁 จบการแข่งขันเรียบร้อยแล้ว!";
-            document.getElementById('next-btn').style.display = 'none';
+        socket.on('match_ended', (data) => {
+            document.getElementById('host-q-text').innerText = `🏁 ผลการแข่งขัน: ${data.detail}`;
+            document.getElementById('host-choices').innerHTML = '';
+            document.getElementById('reset-btn').style.display = 'inline-block';
         });
     </script>
 </body>
