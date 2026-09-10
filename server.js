@@ -9,9 +9,11 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ชุดคำถาม (ตัวอย่าง 5 ข้อ)
+const MAX_PER_TEAM = 16;
+let players = {}; // เก็บข้อมูลผู้เล่นทั้งหมด { socketId: { name, team, power } }
+
 const questions = [
-    { q: "กระแสไฟฟ้ามีหน่วยเป็นอะไร?", choices: ["Volt", "Ampere", "Ohm", "Watt"], answer: 1 }, // 0=A, 1=B, 2=C, 3=D
+    { q: "กระแสไฟฟ้ามีหน่วยเป็นอะไร?", choices: ["Volt", "Ampere", "Ohm", "Watt"], answer: 1 },
     { q: "เมืองหลวงของประเทศไทยคือ?", choices: ["เชียงใหม่", "ภูเก็ต", "กรุงเทพฯ", "พัทยา"], answer: 2 },
     { q: "โลกหมุนรอบตัวเองใช้เวลาเท่าไร?", choices: ["12 ชั่วโมง", "24 ชั่วโมง", "30 วัน", "365 วัน"], answer: 1 },
     { q: "ข้อใดคือสัตว์เลี้ยงลูกด้วยนม?", choices: ["ฉลาม", "จระเข้", "วาฬ", "เต่า"], answer: 2 },
@@ -19,53 +21,74 @@ const questions = [
 ];
 
 let gameState = {
-    status: 'waiting', // waiting, playing, summary
+    status: 'waiting',
     currentQ: 0,
+    ropePosition: 50,
     redTotalPower: 0,
     blueTotalPower: 0,
-    ropePosition: 50, // 50 คือตรงกลาง (0=แดงชนะขาด, 100=น้ำเงินชนะขาด)
-    redPlayers: 0,
-    bluePlayers: 0,
     redAnswered: 0,
-    blueAnswered: 0,
+    blueAnswered: 0
 };
 
 let questionStartTime = 0;
 let timerInterval;
 
-io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
+function getPlayersByTeam() {
+    const red = [];
+    const blue = [];
+    for (let id in players) {
+        if (players[id].team === 'RED') red.push(players[id]);
+        if (players[id].team === 'BLUE') blue.push(players[id]);
+    }
+    return { red, blue };
+}
 
-    // ผู้เล่นเข้าทีม
-    socket.on('join_team', (team) => {
-        socket.team = team;
-        socket.hasAnswered = false;
-        if (team === 'RED') gameState.redPlayers++;
-        if (team === 'BLUE') gameState.bluePlayers++;
-        io.emit('update_lobby', gameState);
+io.on('connection', (socket) => {
+    // ส่งข้อมูลห้องปัจจุบันให้ผู้เล่นใหม่
+    const teams = getPlayersByTeam();
+    socket.emit('update_lobby', { red: teams.red, blue: teams.blue, max: MAX_PER_TEAM });
+
+    // ผู้เล่นลงทะเบียนชื่อและเลือกทีม
+    socket.on('join_game', ({ name, team }) => {
+        const teams = getPlayersByTeam();
+        
+        if (team === 'RED' && teams.red.length >= MAX_PER_TEAM) {
+            return socket.emit('join_error', 'ทีมแดงเต็มแล้ว!');
+        }
+        if (team === 'BLUE' && teams.blue.length >= MAX_PER_TEAM) {
+            return socket.emit('join_error', 'ทีมน้ำเงินเต็มแล้ว!');
+        }
+
+        players[socket.id] = {
+            id: socket.id,
+            name: name.trim() || 'ผู้เล่นไร้นาม',
+            team: team,
+            hasAnswered: false
+        };
+
+        socket.emit('join_success', { name: players[socket.id].name, team });
+        
+        // ส่งรายชื่อผู้เล่นพร้อมชื่อไปอัปเดตหน้าจอใหญ่
+        const updatedTeams = getPlayersByTeam();
+        io.emit('update_lobby', { red: updatedTeams.red, blue: updatedTeams.blue, max: MAX_PER_TEAM });
     });
 
-    // โฮสต์สั่งเริ่มเกม / เริ่มข้อต่อไป
+    // โฮสต์สั่งเริ่มคำถาม
     socket.on('start_question', () => {
         if (gameState.currentQ >= questions.length) return;
-        
+
         gameState.status = 'playing';
         gameState.redAnswered = 0;
         gameState.blueAnswered = 0;
-        
-        // รีเซ็ตเชือกกลับมาตรงกลางทุกข้อ (หรือจะให้ดึงต่อเนื่องก็ได้ แต่แนะนำให้รีเซ็ตเพื่อความสูสีในแต่ละข้อ)
-        gameState.ropePosition = 50; 
-        
-        // บอกให้ทุกคนรีเซ็ตสถานะการตอบ
-        const sockets = io.sockets.sockets;
-        for (const [id, s] of sockets) {
-            s.hasAnswered = false;
+        gameState.ropePosition = 50;
+
+        for (let id in players) {
+            players[id].hasAnswered = false;
         }
 
         io.emit('new_question', {
             questionIndex: gameState.currentQ,
-            questionData: questions[gameState.currentQ],
-            ropePosition: gameState.ropePosition
+            questionData: questions[gameState.currentQ]
         });
 
         questionStartTime = Date.now();
@@ -83,56 +106,51 @@ io.on('connection', (socket) => {
         }, 1000);
     });
 
-    // ผู้เล่นส่งคำตอบ
+    // ส่งคำตอบ
     socket.on('submit_answer', (answerIndex) => {
-        if (gameState.status !== 'playing' || socket.hasAnswered || !socket.team) return;
-        
-        socket.hasAnswered = true;
+        const player = players[socket.id];
+        if (!player || gameState.status !== 'playing' || player.hasAnswered) return;
+
+        player.hasAnswered = true;
         let timeTaken = (Date.now() - questionStartTime) / 1000;
         if (timeTaken > 15) timeTaken = 15;
 
-        const currentQuestion = questions[gameState.currentQ];
-        const isCorrect = (answerIndex === currentQuestion.answer);
-
+        const isCorrect = (answerIndex === questions[gameState.currentQ].answer);
         let power = 0;
+
         if (isCorrect) {
-            // สูตร: 100 * (15 - เวลา) / 15
-            power = 100 * ((15 - timeTaken) / 15);
-            power = Math.round(power * 10) / 10;
+            power = Math.round((100 * ((15 - timeTaken) / 15)) * 10) / 10;
         }
 
-        // เพิ่มแรงให้ทีมและขยับเชือกแบบ Real-time
-        if (socket.team === 'RED') {
+        if (player.team === 'RED') {
             gameState.redTotalPower += power;
             gameState.redAnswered++;
-            gameState.ropePosition -= (power * 0.15); // สเกลการขยับเชือก
+            gameState.ropePosition -= (power * 0.12);
         } else {
             gameState.blueTotalPower += power;
             gameState.blueAnswered++;
-            gameState.ropePosition += (power * 0.15);
+            gameState.ropePosition += (power * 0.12);
         }
 
-        // จำกัดขอบเขตเชือก
-        if(gameState.ropePosition < 0) gameState.ropePosition = 0;
-        if(gameState.ropePosition > 100) gameState.ropePosition = 100;
+        if (gameState.ropePosition < 5) gameState.ropePosition = 5;
+        if (gameState.ropePosition > 95) gameState.ropePosition = 95;
 
-        // ส่งผลลัพธ์กลับไปที่มือถือคนตอบ
         socket.emit('answer_result', { isCorrect, power, timeTaken: timeTaken.toFixed(2) });
 
-        // บรอดแคสต์ตำแหน่งเชือกล่าสุดให้จอใหญ่
         io.emit('update_rope', {
             ropePosition: gameState.ropePosition,
             redAnswered: gameState.redAnswered,
             blueAnswered: gameState.blueAnswered,
             redTotalPower: Math.round(gameState.redTotalPower),
-            blueTotalPower: Math.round(gameState.blueTotalPower)
+            blueTotalPower: Math.round(gameState.blueTotalPower),
+            lastPuller: { name: player.name, team: player.team, power }
         });
     });
 
     socket.on('disconnect', () => {
-        if (socket.team === 'RED') gameState.redPlayers--;
-        if (socket.team === 'BLUE') gameState.bluePlayers--;
-        io.emit('update_lobby', gameState);
+        delete players[socket.id];
+        const updatedTeams = getPlayersByTeam();
+        io.emit('update_lobby', { red: updatedTeams.red, blue: updatedTeams.blue, max: MAX_PER_TEAM });
     });
 });
 
@@ -146,6 +164,5 @@ function endQuestion() {
     gameState.currentQ++;
 }
 
-server.listen(3000, () => {
-    console.log('Game Server is running at http://localhost:3000');
-});
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
