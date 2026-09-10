@@ -5,269 +5,174 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Quiz Tug of War - Player</title>
     <script src="/socket.io/socket.io.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;700;900&family=Orbitron:wght@900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Kanit', sans-serif; background: #0f172a; color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; align-items: center; justify-content: center; transition: background 0.3s ease;}
+        body { font-family: 'Kanit', sans-serif; background: #0f172a; color: white; min-height: 100vh; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow-x: hidden; }
 
-        .card { background: rgba(0, 0, 0, 0.6); border: 2px solid #eab308; box-shadow: 0 0 20px rgba(234,179,8,0.2); border-radius: 16px; padding: 25px; text-align: center; max-width: 450px; width: 90%; }
-        input { width: 100%; padding: 16px; font-size: 1.2em; font-family: 'Kanit'; font-weight: bold; border-radius: 8px; border: 2px solid #ca8a04; background: rgba(0,0,0,0.8); color: #fff; margin-bottom: 15px; text-align: center; outline:none;}
-        input:focus { border-color: #fef08a; }
+        .card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 25px; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.5); z-index: 10; }
+
+        input { width: 100%; padding: 16px; font-size: 1.2em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; border: 2px solid #38bdf8; background: rgba(0,0,0,0.4); color: #fff; margin-bottom: 15px; text-align: center; outline: none; }
+        .btn-3d { width: 100%; padding: 18px; font-size: 1.4em; font-family: 'Kanit'; font-weight: 900; border: none; border-radius: 16px; margin-bottom: 12px; color: white; cursor: pointer; transition: 0.1s; }
+        .btn-3d:active { transform: translateY(4px); }
+        .team-red { background: linear-gradient(180deg, #ff4d4d, #d10000); box-shadow: 0 5px 0 #8a0000; }
+        .team-blue { background: linear-gradient(180deg, #4da6ff, #0066cc); box-shadow: 0 5px 0 #004080; }
+
+        #quiz-screen, #result-screen, #waiting-screen { display: none; width: 100%; max-width: 450px; }
+
+        /* ระบบมินิ Top-View บนมือถือ */
+        .mini-arena { position: relative; width: 100%; height: 120px; background: #4d7c0f; border-radius: 16px; margin-bottom: 20px; overflow: hidden; border: 4px solid #3f6212; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 5px 15px rgba(0,0,0,0.5); }
+        .mini-rope { position: absolute; left: 0; right: 0; height: 12px; background: repeating-linear-gradient(45deg, #d4a373, #d4a373 6px, #a8794d 6px, #a8794d 12px); box-shadow: 0 5px 10px rgba(0,0,0,0.8); border-radius: 6px; z-index: 1; }
         
-        .btn-3d { width: 100%; padding: 18px; font-size: 1.4em; font-family: 'Kanit'; font-weight: 900; border: 2px solid rgba(255,255,255,0.2); border-radius: 12px; margin-bottom: 12px; color: white; cursor: pointer; text-transform: uppercase; box-shadow: 0 4px 0 rgba(0,0,0,0.5);}
-        .btn-3d:active:not(:disabled) { transform: translateY(4px); box-shadow: none; }
+        .my-avatar { position: relative; display: flex; flex-direction: column; align-items: center; z-index: 5; transition: transform 0.2s; }
+        .my-head { width: 45px; height: 45px; border-radius: 50%; border: 3px solid #111; box-shadow: 0 10px 10px rgba(0,0,0,0.5); background-image: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.4), transparent); }
+        .my-hands { display: flex; gap: 24px; position: absolute; z-index: 10; top: 15px; }
+        .my-hand { width: 14px; height: 14px; border-radius: 50%; background: #fcd34d; border: 2px solid #92400e; box-shadow: 0 3px 5px rgba(0,0,0,0.5); }
         
-        .team-red { background: linear-gradient(180deg, #ec4899, #be185d); }
-        .team-blue { background: linear-gradient(180deg, #10b981, #047857); }
+        .my-team-red .my-head { background-color: #ef4444; }
+        .my-team-blue .my-head { background-color: #3b82f6; }
         
-        /* ปุ่มเวลาทีมเต็มจะเปลี่ยนเป็นสีเทา */
-        .btn-disabled { background: #475569 !important; border-color: #334155 !important; color: #94a3b8 !important; cursor: not-allowed; box-shadow: none !important; transform: none !important; filter: grayscale(100%);}
+        /* มือถือหันข้างในจอ */
+        .my-team-red .my-hands { left: 35px; }
+        .my-team-blue .my-hands { right: 35px; }
 
-        #setup-container, #screen-reselect, #screen-eliminated, #screen-champion { display: none; width: 100%; justify-content: center; }
-        #setup-container { display: flex; }
+        /* แอนิเมชันกระตุกเฉพาะตัวในมือถือ */
+        @keyframes personal-pull-red { 0% { transform: translateX(0); } 50% { transform: translateX(-20px); } 100% { transform: translateX(0); } }
+        @keyframes personal-pull-blue { 0% { transform: translateX(0); } 50% { transform: translateX(20px); } 100% { transform: translateX(0); } }
+        .anim-pull.my-team-red { animation: personal-pull-red 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .anim-pull.my-team-blue { animation: personal-pull-blue 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 
-        #game-container { display: none; flex-direction: column; height: 100vh; width: 100%; max-width: 800px; background: radial-gradient(circle at top, #1e293b, #020617); }
-        
-        .mini-arena { flex: 0 0 35%; position: relative; border-bottom: 2px solid #ca8a04; display: flex; flex-direction: column; min-height: 220px; overflow:hidden;}
-        .arena-header { display: flex; justify-content: space-between; padding: 10px 15px; font-weight: bold; background: rgba(0,0,0,0.8); align-items: center; z-index: 50; border-bottom: 1px solid #475569;}
-        
-        .btn-leave { background: #ef4444; color: white; border: none; padding: 5px 12px; border-radius: 6px; font-family: 'Kanit'; font-weight: bold; cursor: pointer; border: 1px solid #7f1d1d;}
-
-        /* จำลองฉากโชว์ตัวละครบนมือถือ */
-        .tower-bg { position: absolute; bottom: 0; width: 100%; height: 60%; display: flex; justify-content: space-between; align-items: flex-end; }
-        .platform-container { width: 42%; height: 100%; display: flex; flex-direction: column; position: relative; }
-        .team-roster { position: absolute; bottom: 100%; width: 100%; display: flex; flex-wrap: wrap-reverse; align-content: flex-start; z-index: 30;}
-        .red-roster { justify-content: flex-end; flex-direction: row-reverse; }
-        .blue-roster { justify-content: flex-start; flex-direction: row; }
-        
-        .tower-plat { width: 100%; height: 100%; background: #ca8a04; position: relative; border-top: 6px solid #facc15; background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.4) 10px, rgba(0,0,0,0.4) 20px); }
-        .tower-chasm { width: 16%; height: 100%; background: linear-gradient(to bottom, #000, #000); opacity: 0.8; }
-
-        .rope-system { position: absolute; bottom: 40%; left: 0; right: 0; height: 10px; transform: translateY(50%); z-index: 20;}
-        .rope-line { width: 100%; height: 6px; background: #e2e8f0; border-top: 1px solid #fff; border-bottom: 2px solid #64748b; box-shadow: 0 4px 6px rgba(0,0,0,0.8); }
-        .rope-knot { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); width: 12px; height: 22px; background: #ef4444; border-radius: 2px; box-shadow: 0 0 10px #ef4444; transition: left 0.2s linear; }
-
-        /* ตัวละครบนมือถือ */
-        .player-sprite { display: flex; flex-direction: column; align-items: center; width: 25px; margin: 0 -3px; position: relative; }
-        .player-sprite .name { font-size: 0.55em; color: #cbd5e1; background: rgba(0,0,0,0.8); padding: 1px 4px; border-radius: 4px; white-space: nowrap; max-width: 40px; overflow: hidden; text-overflow: ellipsis; position: absolute; top: -15px;}
-        .player-sprite .body { font-size: 1.5em; line-height: 1; filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.8)); }
-        
-        /* ไฮไลท์ตัวเราเอง */
-        .my-player .name { color: #facc15; font-weight: 900; background: rgba(133, 77, 14, 0.9); border: 1px solid #facc15; z-index: 40;}
-        .my-player { transform: scale(1.2); z-index: 35; }
-
-        .quiz-section { flex: 1; padding: 15px; display: flex; flex-direction: column; position: relative; }
-        .q-box { background: rgba(0,0,0,0.5); border: 1px solid #ca8a04; padding: 15px; border-radius: 8px; font-size: 1.1em; font-weight: bold; margin-bottom: 12px; text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 15px rgba(0,0,0,0.8); }
-        .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; }
-        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 15px; font-size: 1.1em; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 0 #0f172a; transition: all 0.1s;}
-        .choice-btn:active { transform: translateY(4px); box-shadow: none; }
-
-        .floating-power { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 3em; font-weight: 900; opacity: 0; pointer-events: none; z-index: 100; text-shadow: 0 0 10px #000; }
-        @keyframes floatUp { 0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); } 20% { opacity: 1; transform: translate(-50%, -20px) scale(1.2); } 100% { opacity: 0; transform: translate(-50%, -70px) scale(0.8); } }
+        .q-box { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 18px; font-size: 1.3em; font-weight: bold; margin-bottom: 20px; text-align: center; }
+        .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 20px 10px; font-size: 1.2em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; cursor: pointer; }
+        .choice-btn.selected { background: #facc15; color: #000; border-color: #fff; transform: scale(0.95); }
     </style>
 </head>
 <body>
-    <div id="setup-container">
-        <div class="card">
-            <h2 style="color: #facc15; margin-bottom: 5px; font-size: 2em; font-weight: 900; letter-spacing: 2px;">TUG OF WAR</h2>
-            <p style="color: #94a3b8; margin-bottom: 20px;">หอคอยมรณะ</p>
-            <input type="number" id="pin-input" placeholder="รหัส PIN 6 หลัก" maxlength="6">
-            <input type="text" id="name-input" placeholder="ตั้งชื่อผู้เล่น..." maxlength="12">
-            <button class="btn-3d team-red" onclick="joinRoom('RED')">🔺 JOIN RED</button>
-            <button class="btn-3d team-blue" onclick="joinRoom('BLUE')">🟢 JOIN BLUE</button>
+
+    <div id="join-screen" class="card">
+        <h2 style="color: #38bdf8; margin-bottom: 15px;">🎮 สมรภูมิดึงเชือก</h2>
+        <input type="number" id="pin-input" placeholder="กรอกรหัส PIN 6 หลัก" maxlength="6">
+        <input type="text" id="name-input" placeholder="ตั้งชื่อตัวละคร..." maxlength="12">
+        <p style="margin-bottom: 10px; font-weight: bold;">เลือกทีมที่ต้องการเข้าร่วม</p>
+        <button class="btn-3d team-red" onclick="joinRoom('RED')">🔴 TEAM RED</button>
+        <button class="btn-3d team-blue" onclick="joinRoom('BLUE')">🔵 TEAM BLUE</button>
+    </div>
+
+    <div id="waiting-screen" class="card">
+        <div class="mini-arena" id="wait-arena">
+            <div class="mini-rope"></div>
+            <div class="my-avatar" id="wait-avatar">
+                <div class="my-hands"><div class="my-hand"></div><div class="my-hand"></div></div>
+                <div class="my-head"></div>
+            </div>
+        </div>
+        <h1 id="welcome-text" style="font-size: 2em;"></h1>
+        <p style="color: #cbd5e1; margin-top: 10px;">จับเชือกพร้อมแล้ว!</p>
+        <h3 style="color: #00ffcc; margin-top: 15px;">⏳ รอ Host กดเริ่มแข่ง...</h3>
+    </div>
+
+    <div id="quiz-screen">
+        <div class="mini-arena">
+            <div class="mini-rope"></div>
+            <div class="my-avatar" id="quiz-avatar">
+                <div style="position: absolute; top:-25px; font-size: 12px; background:rgba(0,0,0,0.8); padding:2px 8px; border-radius:10px;" id="my-name-hud"></div>
+                <div class="my-hands"><div class="my-hand"></div><div class="my-hand"></div></div>
+                <div class="my-head"></div>
+            </div>
+        </div>
+        
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold;">
+            <span id="my-team-text">TEAM</span>
+            <span style="color:#facc15;">⏱️ <span id="timer" style="font-family:'Orbitron'; font-size: 1.2em;">15</span></span>
+        </div>
+        <div class="q-box" id="q-text">กำลังโหลดโจทย์...</div>
+        <div class="grid-choices">
+            <button class="choice-btn" id="c0" onclick="sendAns(0)">A</button>
+            <button class="choice-btn" id="c1" onclick="sendAns(1)">B</button>
+            <button class="choice-btn" id="c2" onclick="sendAns(2)">C</button>
+            <button class="choice-btn" id="c3" onclick="sendAns(3)">D</button>
         </div>
     </div>
 
-    <div id="screen-eliminated"><div class="card" style="border-color: #ef4444;"><h1 style="font-size: 2.5em; color: #ef4444;">💥 คุณร่วงหล่น!</h1><p style="color:#94a3b8; margin-top:10px;">ELIMINATED</p><button class="btn-leave" style="margin-top:20px; padding: 10px 20px; width:100%;" onclick="resetToSetup()">กลับหน้าหลัก</button></div></div>
-    <div id="screen-champion"><div class="card" style="border-color: #facc15;"><h1 style="font-size: 3em; color: #facc15;">🏆 แชมป์เปี้ยน!</h1><p style="color:#fef08a; margin-top:10px;">ผู้รอดชีวิตคนสุดท้าย</p><button class="btn-leave" style="margin-top:20px; padding: 10px 20px; background:#facc15; color:#000; width:100%;" onclick="resetToSetup()">เล่นอีกครั้ง</button></div></div>
-
-    <div id="game-container">
-        <div class="mini-arena">
-            <div class="arena-header">
-                <span><button class="btn-leave" onclick="leaveRoom()">ออก</button></span>
-                <span id="match-timer" style="color:#facc15; font-size:1.2em; font-family:'Courier New', monospace; font-weight:900;">100</span>
-            </div>
-            <div class="tower-bg">
-                <div class="platform-container">
-                    <div class="team-roster red-roster" id="mini-red-slots"></div>
-                    <div class="tower-plat" style="border-right: 2px solid #a16207;"></div>
-                </div>
-                <div class="tower-chasm"></div>
-                <div class="platform-container">
-                    <div class="team-roster blue-roster" id="mini-blue-slots"></div>
-                    <div class="tower-plat" style="border-left: 2px solid #a16207;"></div>
-                </div>
-            </div>
-            <div class="rope-system"><div class="rope-line"><div class="rope-knot" id="mini-knot"></div></div></div>
-        </div>
-
-        <!-- หน้า Lobby ให้กดสลับทีมก่อนเริ่มเกม (สไตล์ PB) -->
-        <div class="quiz-section" id="lobby-panel">
-            <h3 style="text-align:center; color:#facc15; margin-bottom: 10px;">สลับทีม (SWAP TEAM)</h3>
-            <div style="display:flex; flex-direction:column; gap:10px;">
-                <button class="btn-3d team-red" id="btn-swap-red" onclick="swapTeam('RED')">🔺 SWAP TO RED</button>
-                <button class="btn-3d team-blue" id="btn-swap-blue" onclick="swapTeam('BLUE')">🟢 SWAP TO BLUE</button>
-            </div>
-            <p style="text-align:center; margin-top:15px; color:#94a3b8; font-weight:bold;">⏳ รอหัวหน้าห้องเริ่มเกม...</p>
-        </div>
-
-        <!-- หน้าตอนเริ่มตอบคำถาม -->
-        <div class="quiz-section" id="quiz-panel" style="display:none;">
-            <div id="round-status" style="text-align:center; color:#facc15; margin-bottom: 5px; font-size: 0.9em;">เตรียมพร้อม...</div>
-            <div class="q-box" id="q-text">รอโจทย์...</div>
-            <div class="grid-choices">
-                <button class="choice-btn" id="c0" onclick="sendAns(0)">-</button>
-                <button class="choice-btn" id="c1" onclick="sendAns(1)">-</button>
-                <button class="choice-btn" id="c2" onclick="sendAns(2)">-</button>
-                <button class="choice-btn" id="c3" onclick="sendAns(3)">-</button>
-            </div>
-            <div class="floating-power" id="float-power">+0</div>
-        </div>
+    <div id="result-screen" class="card">
+        <h1 id="res-icon" style="font-size: 4em;"></h1>
+        <h2 id="res-title"></h2>
+        <h1 id="res-power" style="color: #facc15; font-size: 3em; margin-top: 15px;">💪 +0</h1>
     </div>
 
     <script>
         const socket = io();
         let currentRoomCode = '';
-        let currentQIndex = 0;
-        let myTeam = null;
-
-        function setPlayerColor(team) {
-            myTeam = team;
-            if (team === 'RED') document.body.style.background = 'radial-gradient(circle at center, #831843, #0f172a)';
-            else if (team === 'BLUE') document.body.style.background = 'radial-gradient(circle at center, #064e3b, #0f172a)';
-            else document.body.style.background = '#0f172a';
-        }
-
-        function hideAll() { 
-            ['setup-container', 'game-container', 'screen-eliminated', 'screen-champion'].forEach(id => {
-                document.getElementById(id).style.display = 'none';
-            });
-        }
-        
-        function resetToSetup() { hideAll(); setPlayerColor(null); document.getElementById('setup-container').style.display = 'flex'; }
+        let myTeam = '';
+        let myName = '';
 
         function joinRoom(team) {
             const pin = document.getElementById('pin-input').value;
             const name = document.getElementById('name-input').value;
-            if (!pin || !name) return alert('กรอกข้อมูลให้ครบ!');
-            currentRoomCode = pin;
+
+            if (!pin || pin.length !== 6) return alert('กรอกรหัส PIN 6 หลักก่อนครับ!');
+            if (!name.trim()) return alert('ตั้งชื่อก่อนเข้าเล่นครับ!');
+
+            myTeam = team; myName = name; currentRoomCode = pin;
             socket.emit('join_room', { roomCode: pin, name, team });
         }
 
-        function swapTeam(team) {
-            if (myTeam === team) return;
-            socket.emit('swap_team', { roomCode: currentRoomCode, team });
-        }
-
         socket.on('join_error', (msg) => alert(msg));
-        
+
         socket.on('join_success', (data) => {
-            setPlayerColor(data.team);
-            hideAll(); 
-            document.getElementById('game-container').style.display = 'flex';
-            document.getElementById('lobby-panel').style.display = 'flex';
-            document.getElementById('quiz-panel').style.display = 'none';
+            document.getElementById('join-screen').style.display = 'none';
+            document.getElementById('waiting-screen').style.display = 'block';
+
+            document.getElementById('welcome-text').innerText = data.name;
+            document.getElementById('welcome-text').style.color = data.team === 'RED' ? '#ff4d4d' : '#4da6ff';
+            
+            const avatarClass = data.team === 'RED' ? 'my-team-red' : 'my-team-blue';
+            document.getElementById('wait-avatar').className = `my-avatar ${avatarClass}`;
+            document.getElementById('quiz-avatar').className = `my-avatar ${avatarClass}`;
+            document.getElementById('my-name-hud').innerText = data.name;
         });
 
-        socket.on('team_swapped', (data) => {
-            setPlayerColor(data.team);
-        });
+        socket.on('new_question', (data) => {
+            document.getElementById('waiting-screen').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'none';
+            document.getElementById('quiz-screen').style.display = 'block';
 
-        socket.on('update_lobby', (data) => {
-            // อัปเดตตัวละครลงบนแท่นมือถือ
-            const redContainer = document.getElementById('mini-red-slots');
-            const blueContainer = document.getElementById('mini-blue-slots');
-            if(redContainer && blueContainer) {
-                redContainer.innerHTML = ''; blueContainer.innerHTML = '';
-                let redCount = 0, blueCount = 0;
+            document.getElementById('q-text').innerText = data.questionData.q;
+            document.getElementById('my-team-text').innerText = myTeam === 'RED' ? '🔴 RED TEAM' : '🔵 BLUE TEAM';
+            document.getElementById('my-team-text').style.color = myTeam === 'RED' ? '#ff4d4d' : '#4da6ff';
 
-                data.players.forEach(p => {
-                    if (!p.team) return;
-                    const isMe = (p.id === socket.id);
-                    const container = p.team === 'RED' ? redContainer : blueContainer;
-                    
-                    const charEl = document.createElement('div');
-                    charEl.className = `player-sprite ${isMe ? 'my-player' : ''}`;
-                    const icon = p.isBot ? '🤖' : (p.team === 'RED' ? '🦑' : '🏃');
-                    charEl.innerHTML = `<div class="name">${isMe ? 'YOU' : p.name}</div><div class="body">${icon}</div>`;
-                    container.appendChild(charEl);
-
-                    if (p.team === 'RED') redCount++;
-                    if (p.team === 'BLUE') blueCount++;
-                });
-
-                // อัปเดตสถานะปุ่มสลับทีม (เทาถ้าเต็ม)
-                const max = data.maxPerTeam || 16;
-                const btnRed = document.getElementById('btn-swap-red');
-                const btnBlue = document.getElementById('btn-swap-blue');
-                
-                if(btnRed) {
-                    btnRed.innerText = `🔺 SWAP TO RED (${redCount}/${max})`;
-                    if (redCount >= max && myTeam !== 'RED') {
-                        btnRed.classList.add('btn-disabled'); btnRed.disabled = true;
-                    } else {
-                        btnRed.classList.remove('btn-disabled'); btnRed.disabled = false;
-                    }
-                }
-                
-                if(btnBlue) {
-                    btnBlue.innerText = `🟢 SWAP TO BLUE (${blueCount}/${max})`;
-                    if (blueCount >= max && myTeam !== 'BLUE') {
-                        btnBlue.classList.add('btn-disabled'); btnBlue.disabled = true;
-                    } else {
-                        btnBlue.classList.remove('btn-disabled'); btnBlue.disabled = false;
-                    }
-                }
-            }
-        });
-
-        socket.on('survived_round', (data) => {
-            currentRoomCode = data.newRoomCode;
-            setPlayerColor(null);
-            hideAll(); 
-            // ให้กลับมาหน้า Lobby เพื่อเลือกทีมใหม่ (สลับได้จนกว่าเกมเริ่ม)
-            document.getElementById('game-container').style.display = 'flex';
-            document.getElementById('lobby-panel').style.display = 'flex';
-            document.getElementById('quiz-panel').style.display = 'none';
-        });
-
-        socket.on('start_player_stream', (data) => {
-            hideAll(); 
-            document.getElementById('game-container').style.display = 'flex';
-            document.getElementById('lobby-panel').style.display = 'none'; // ซ่อนปุ่มสลับทีม
-            document.getElementById('quiz-panel').style.display = 'flex'; // โชว์คำถาม
-            currentQIndex = data.qIndex; loadQuestion(data.qData, data.qIndex, data.totalQuestions);
-        });
-
-        socket.on('kicked', () => { alert("❌ คุณถูกเชิญออกจากห้อง"); resetToSetup(); });
-
-        function leaveRoom() { socket.emit('leave_room', { roomCode: currentRoomCode }); resetToSetup(); }
-
-        socket.on('eliminated', () => { setPlayerColor(null); hideAll(); document.getElementById('screen-eliminated').style.display = 'flex'; });
-        socket.on('you_are_champion', () => { setPlayerColor(null); hideAll(); document.getElementById('screen-champion').style.display = 'flex'; });
-
-        function loadQuestion(qData, qIndex, total) {
-            document.getElementById('round-status').innerText = `คำถามที่ ${qIndex + 1} / ${total}`;
-            document.getElementById('q-text').innerText = qData.q;
             for (let i = 0; i < 4; i++) {
-                const btn = document.getElementById(`c${i}`); btn.innerText = qData.choices[i]; btn.disabled = false;
+                const btn = document.getElementById(`c${i}`);
+                btn.innerText = data.questionData.choices[i];
+                btn.disabled = false;
+                btn.className = 'choice-btn';
             }
+        });
+
+        socket.on('timer_tick', (t) => { document.getElementById('timer').innerText = t < 10 ? `0${t}` : t; });
+
+        function sendAns(idx) {
+            socket.emit('submit_answer', { roomCode: currentRoomCode, answerIndex: idx });
+            for (let i = 0; i < 4; i++) { document.getElementById(`c${i}`).disabled = true; }
+            document.getElementById(`c${idx}`).classList.add('selected');
+
+            // สั่งแอนิเมชันกระตุกเชือกในมือถือตัวเอง
+            const avatar = document.getElementById('quiz-avatar');
+            avatar.classList.add('anim-pull');
+            setTimeout(() => avatar.classList.remove('anim-pull'), 300);
         }
 
-        function disableButtons(status) { for (let i = 0; i < 4; i++) document.getElementById(`c${i}`).disabled = status; }
-        function sendAns(idx) { disableButtons(true); socket.emit('submit_answer_fast', { roomCode: currentRoomCode, qIndex: currentQIndex, answerIndex: idx }); }
+        socket.on('answer_result', (data) => {
+            setTimeout(() => {
+                document.getElementById('quiz-screen').style.display = 'none';
+                document.getElementById('result-screen').style.display = 'block';
 
-        socket.on('answer_feedback', (data) => {
-            const floatEl = document.getElementById('float-power');
-            floatEl.innerText = data.isCorrect ? `+${data.power}` : `-${data.power}`;
-            floatEl.style.color = data.isCorrect ? '#10b981' : '#ef4444';
-            floatEl.style.animation = 'none'; void floatEl.offsetWidth; 
-            floatEl.style.animation = 'floatUp 0.8s ease-out forwards';
-            currentQIndex = data.nextQIndex; loadQuestion(data.nextQData, currentQIndex, 10);
+                document.getElementById('res-icon').innerText = data.isCorrect ? '🎯' : '❌';
+                document.getElementById('res-title').innerText = data.isCorrect ? 'ออกแรงสำเร็จ!' : 'พลาดท่า!';
+                document.getElementById('res-power').innerText = `💪 +${data.power}`;
+            }, 600); // ดีเลย์นิดนึงให้ดูแอนิเมชันกระตุกเสร็จก่อน
         });
-
-        socket.on('timer_tick', (t) => { document.getElementById('match-timer').innerText = t; });
-        socket.on('update_rope', (data) => { document.getElementById('mini-knot').style.left = `${data.ropePosition}%`; });
     </script>
 </body>
 </html>
