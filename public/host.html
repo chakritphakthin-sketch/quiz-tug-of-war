@@ -21,7 +21,6 @@
 
         .timer-display { font-family: 'Orbitron', sans-serif; font-size: 3em; color: #00ffcc; text-shadow: 0 0 20px #00ffcc; }
 
-        /* โซนคำถามของ Host สำหรับกดเล่นขำๆ */
         .host-quiz-panel { background: rgba(255,255,255,0.05); border: 2px dashed #facc15; margin: 10px 20px; padding: 12px 20px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; }
         .host-q-title { font-size: 1.2em; color: #facc15; font-weight: bold; margin-bottom: 5px; }
         .host-choices-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; margin-top: 8px; }
@@ -60,21 +59,20 @@
             </div>
             <div class="timer-display" id="timer-box">100</div>
             <div>
-                <button class="btn-start" id="start-btn" onclick="startMatch()">🚀 เริ่มศึกชักเย่อ (100s)</button>
-                <button class="btn-start" id="reset-btn" onclick="resetLobby()" style="display:none; background:#f59e0b;">🔄 กลับไปจัดทีมรอบต่อไป</button>
+                <button class="btn-start" id="start-btn" onclick="startMatch()">🚀 เริ่มรอบแข่งขัน</button>
+                <button class="btn-start" id="reset-btn" onclick="resetLobby()" style="display:none; background:#f59e0b;">🔄 เริ่มรอบต่อไป (รอผู้เล่นเลือกทีม)</button>
             </div>
         </div>
 
-        <!-- กล่องควิซสำหรับโฮสต์เล่นขำๆ -->
         <div class="host-quiz-panel">
-            <div class="host-q-title">👑 HOST FUN QUIZ (ไม่มีผลกับคะแนนผู้เล่น)</div>
-            <div id="host-q-text" style="font-size:1.1em;">กดเริ่มเกมเพื่อดูโจทย์...</div>
+            <div class="host-q-title" id="host-panel-title">👑 HOST FUN QUIZ</div>
+            <div id="host-q-text" style="font-size:1.1em;">กดเริ่มเกมเพื่อเริ่มศึกชักเย่อ...</div>
             <div class="host-choices-grid" id="host-choices"></div>
         </div>
 
         <div class="stage">
             <div class="cliff cliff-left">
-                <h2>🔴 RED TEAM (<span id="red-count">0</span>/16)</h2>
+                <h2>🔴 RED TEAM (<span id="red-count">0</span>)</h2>
                 <div class="grid-slots" id="red-slots"></div>
             </div>
 
@@ -86,7 +84,7 @@
             </div>
 
             <div class="cliff cliff-right">
-                <h2 style="text-align: right;">BLUE TEAM 🔵 (<span id="blue-count">0</span>/16)</h2>
+                <h2 style="text-align: right;">BLUE TEAM 🔵 (<span id="blue-count">0</span>)</h2>
                 <div class="grid-slots" id="blue-slots"></div>
             </div>
         </div>
@@ -127,7 +125,7 @@
                 const box = document.createElement('div');
                 box.className = 'slot-box';
                 box.id = `${containerId}-slot-${i}`;
-                box.innerHTML = `<span style="opacity:0.3;">${i+1}</span>`;
+                box.innerHTML = `<span style="opacity:0.2;">${i+1}</span>`;
                 container.appendChild(box);
             }
         }
@@ -136,6 +134,7 @@
             initSlots();
             let redNum = 0, blueNum = 0;
             data.players.forEach(p => {
+                if (!p.team) return;
                 const prefix = p.team === 'RED' ? 'red-slots' : 'blue-slots';
                 const slotBox = document.getElementById(`${prefix}-slot-${p.slot}`);
                 if (slotBox) {
@@ -149,9 +148,8 @@
             document.getElementById('blue-count').innerText = blueNum;
         });
 
-        function startMatch() {
-            socket.emit('start_match', { roomCode: currentRoomCode });
-        }
+        function startMatch() { socket.emit('start_match', { roomCode: currentRoomCode }); }
+        socket.on('start_error', (msg) => alert(msg));
 
         function resetLobby() {
             socket.emit('reset_to_lobby', { roomCode: currentRoomCode });
@@ -159,7 +157,7 @@
             document.getElementById('start-btn').style.display = 'inline-block';
             document.getElementById('timer-box').innerText = "100";
             document.getElementById('knot').style.left = '50%';
-            document.getElementById('host-q-text').innerText = "เตรียมพร้อมศึกรอบใหม่...";
+            document.getElementById('host-q-text').innerText = "รอผู้เล่นเลือกทีมใหม่...";
             document.getElementById('host-choices').innerHTML = "";
         }
 
@@ -182,8 +180,8 @@
                 btn.className = 'host-choice-btn';
                 btn.innerText = c;
                 btn.onclick = () => {
-                    if (idx === q.answer) alert("🎉 โฮสต์ตอบถูก! (ไม่มีผลกับชักเย่อ)");
-                    else alert("❌ โฮสต์ตอบผิด!");
+                    if (idx === q.answer) alert("🎉 ตอบถูก!");
+                    else alert("❌ ตอบผิด!");
                     hostQIdx = (hostQIdx + 1) % hostQuestions.length;
                     renderHostQuiz();
                 };
@@ -194,10 +192,17 @@
         socket.on('timer_tick', (t) => { document.getElementById('timer-box').innerText = t; });
         socket.on('update_rope', (data) => { document.getElementById('knot').style.left = `${data.ropePosition}%`; });
 
-        socket.on('match_ended', (data) => {
-            document.getElementById('host-q-text').innerText = `🏁 ผลการแข่งขัน: ${data.detail}`;
+        socket.on('round_ended_survivors', (data) => {
+            document.getElementById('host-q-text').innerText = `🏁 จบการแข่งขัน! ทีม ${data.winningTeam} ชนะ! ผู้เล่นฝั่งแพ้ถูกคัดออก เหลือผู้รอดชีวิต ${data.remainingCount} คน`;
             document.getElementById('host-choices').innerHTML = '';
             document.getElementById('reset-btn').style.display = 'inline-block';
+        });
+
+        socket.on('champion_declared', (data) => {
+            document.getElementById('host-q-text').innerHTML = `<h1 style="color:#facc15;">👑 ขอยินดีกับผู้ชนะเลิศ: ${data.champName} 🏆</h1>`;
+            document.getElementById('host-choices').innerHTML = '';
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('reset-btn').style.display = 'none';
         });
     </script>
 </body>
