@@ -9,59 +9,64 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: 'Kanit', sans-serif; background: #0f172a; color: white; min-height: 100vh; padding: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-
         .card { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 20px; width: 100%; max-width: 450px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.5); }
-
-        input { width: 100%; padding: 14px; font-size: 1.1em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; border: 2px solid #38bdf8; background: rgba(0,0,0,0.4); color: #fff; margin-bottom: 12px; text-align: center; outline: none; }
-        .btn-3d { width: 100%; padding: 16px; font-size: 1.3em; font-weight: 900; border: none; border-radius: 16px; margin-bottom: 10px; color: white; cursor: pointer; transition: 0.1s; }
+        
+        input { width: 100%; padding: 14px; font-size: 1.1em; font-weight: bold; border-radius: 14px; border: 2px solid #38bdf8; background: rgba(0,0,0,0.4); color: #fff; margin-bottom: 12px; text-align: center; outline: none; }
+        .btn-3d { width: 100%; padding: 16px; font-size: 1.3em; font-weight: 900; border: none; border-radius: 16px; margin-bottom: 10px; color: white; cursor: pointer; }
         .team-red { background: linear-gradient(180deg, #ff4d4d, #d10000); box-shadow: 0 4px 0 #8a0000; }
         .team-blue { background: linear-gradient(180deg, #4da6ff, #0066cc); box-shadow: 0 4px 0 #004080; }
-        .btn-leave { background: linear-gradient(180deg, #64748b, #475569); box-shadow: 0 4px 0 #334155; margin-top: 20px; }
 
-        #login-screen, #team-select-screen, #waiting-screen, #quiz-screen, #eliminated-screen, #champion-screen { display: none; width: 100%; max-width: 450px; }
-        #login-screen { display: block; } /* เปิดหน้าแรกสุด */
+        #quiz-screen, #result-screen, #waiting-screen, #eliminated-screen, #champion-screen { display: none; width: 100%; max-width: 450px; }
 
-        .q-box { background: rgba(255,255,255,0.1); padding: 18px; border-radius: 18px; font-size: 1.2em; font-weight: bold; margin-bottom: 15px; text-align: center; height: 100px; display: flex; align-items: center; justify-content: center;}
+        /* สนามจิ๋วบนมือถือ */
+        .mini-arena { position: relative; width: 100%; height: 110px; background: #4d7c0f; border-radius: 16px; margin-bottom: 15px; overflow: hidden; border: 3px solid #3f6212; display: flex; align-items: center; justify-content: center; }
+        .mini-rope { position: absolute; left: 0; right: 0; height: 10px; background: repeating-linear-gradient(45deg, #d4a373, #d4a373 5px, #a8794d 5px, #a8794d 10px); }
+        .my-avatar { position: relative; display: flex; flex-direction: column; align-items: center; z-index: 5; }
+        .my-head { width: 40px; height: 40px; border-radius: 50%; border: 3px solid #111; box-shadow: 0 5px 10px rgba(0,0,0,0.5); }
+        .my-hands { display: flex; gap: 20px; position: absolute; z-index: 10; top: 14px; }
+        .my-hand { width: 12px; height: 12px; border-radius: 50%; background: #fcd34d; border: 2px solid #92400e; }
+        .my-team-red .my-head { background-color: #ef4444; } .my-team-blue .my-head { background-color: #3b82f6; }
+        .my-team-red .my-hands { left: 30px; } .my-team-blue .my-hands { right: 30px; }
+
+        .q-box { background: rgba(255,255,255,0.1); padding: 18px; border-radius: 18px; font-size: 1.2em; font-weight: bold; margin-bottom: 15px; text-align: center; }
         .grid-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 15px 5px; font-size: 1em; font-weight: bold; border-radius: 14px; cursor: pointer; }
-        .choice-btn.selected { background: #facc15; color: #000; border-color: #fff; }
+        .choice-btn { background: #1e293b; border: 2px solid #475569; color: white; padding: 18px 10px; font-size: 1.1em; font-family: 'Kanit'; font-weight: bold; border-radius: 14px; cursor: pointer; }
+        .choice-btn.selected { background: #facc15; color: #000; border-color: #fff; transform: scale(0.95); }
 
-        .time-bar-bg { width: 100%; height: 10px; background: #334155; border-radius: 5px; margin-bottom: 15px; overflow: hidden; }
-        .time-bar-fill { height: 100%; background: #00ffcc; width: 100%; transition: width 1s linear; }
-
-        .big-icon { font-size: 5em; margin-bottom: 10px; }
+        .anim-pull.my-team-red { animation: pull-red 0.3s ease; } .anim-pull.my-team-blue { animation: pull-blue 0.3s ease; }
+        @keyframes pull-red { 0% { transform: translateX(0); } 50% { transform: translateX(-20px); } 100% { transform: translateX(0); } }
+        @keyframes pull-blue { 0% { transform: translateX(0); } 50% { transform: translateX(20px); } 100% { transform: translateX(0); } }
     </style>
 </head>
 <body>
 
-    <!-- 1. หน้าล็อกอินครั้งแรก -->
-    <div id="login-screen" class="card">
-        <h2 style="color: #38bdf8; margin-bottom: 15px;">🎮 สมรภูมิดึงเชือก</h2>
+    <div id="join-screen" class="card">
+        <h2 style="color: #38bdf8; margin-bottom: 15px;" id="join-title">🎮 สมรภูมิดึงเชือก</h2>
         <input type="number" id="pin-input" placeholder="กรอกรหัส PIN 6 หลัก" maxlength="6">
         <input type="text" id="name-input" placeholder="ตั้งชื่อตัวละคร..." maxlength="12">
-        <button class="btn-3d" style="background: #10b981; box-shadow: 0 4px 0 #059669;" onclick="firstLogin()">เข้าสู่ล้อบบี้</button>
+        <p style="margin-bottom: 10px; font-weight: bold;">เลือกทีมที่ต้องการเข้าร่วม</p>
+        <button class="btn-3d team-red" onclick="joinRoom('RED')">🔴 TEAM RED</button>
+        <button class="btn-3d team-blue" onclick="joinRoom('BLUE')">🔵 TEAM BLUE</button>
     </div>
 
-    <!-- 2. หน้าเลือกทีม (ใช้ทั้งตอนเข้าครั้งแรก และตอนเข้ารอบ) -->
-    <div id="team-select-screen" class="card">
-        <h2 style="color: #facc15; margin-bottom: 15px;">⚔️ เลือกฝั่งของคุณ!</h2>
-        <p style="margin-bottom: 15px; color: #cbd5e1;">เลือกทีมที่จะดึงเชือกในรอบนี้</p>
-        <button class="btn-3d team-red" onclick="joinTeam('RED')">🔴 TEAM RED</button>
-        <button class="btn-3d team-blue" onclick="joinTeam('BLUE')">🔵 TEAM BLUE</button>
-    </div>
-
-    <!-- 3. หน้ารอเกมเริ่ม -->
     <div id="waiting-screen" class="card">
-        <div class="big-icon">⏳</div>
-        <h2 id="wait-team-text"></h2>
-        <p style="color: #94a3b8; margin-top: 10px;">จับเชือกพร้อมแล้ว รอ Host กดเริ่มเกม...</p>
+        <div class="mini-arena">
+            <div class="mini-rope"></div>
+            <div class="my-avatar" id="wait-avatar"><div class="my-hands"><div class="my-hand"></div><div class="my-hand"></div></div><div class="my-head"></div></div>
+        </div>
+        <h1 id="welcome-text"></h1>
+        <h3 style="color: #00ffcc; margin-top: 10px;">⏳ รอ Host กดเริ่มแข่ง...</h3>
     </div>
 
-    <!-- 4. หน้าตอบคำถาม (รันออโต้ 60 วิ) -->
     <div id="quiz-screen">
-        <div class="time-bar-bg"><div class="time-bar-fill" id="round-time-bar"></div></div>
-        <div style="text-align: center; margin-bottom: 10px; font-weight: bold; color:#facc15;" id="my-team-hud">TEAM</div>
-        
+        <div class="mini-arena">
+            <div class="mini-rope"></div>
+            <div class="my-avatar" id="quiz-avatar"><div class="my-hands"><div class="my-hand"></div><div class="my-hand"></div></div><div class="my-head"></div></div>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-weight:bold;">
+            <span id="my-team-text">TEAM</span>
+            <span style="color:#facc15;">⏱️ <span id="timer" style="font-family:'Orbitron'; font-size: 1.2em;">60</span></span>
+        </div>
         <div class="q-box" id="q-text">กำลังโหลดโจทย์...</div>
         <div class="grid-choices">
             <button class="choice-btn" id="c0" onclick="sendAns(0)">A</button>
@@ -69,112 +74,116 @@
             <button class="choice-btn" id="c2" onclick="sendAns(2)">C</button>
             <button class="choice-btn" id="c3" onclick="sendAns(3)">D</button>
         </div>
-        <p id="ans-feedback" style="text-align: center; margin-top: 15px; font-weight: bold; color: #00ffcc; height: 20px;"></p>
     </div>
 
-    <!-- 5. หน้าคนแพ้คัดออก -->
+    <div id="result-screen" class="card">
+        <h1 id="res-icon" style="font-size: 4em;"></h1>
+        <h2 id="res-title"></h2>
+        <p style="color: #94a3b8; margin-top: 10px;">กำลังโหลดข้อต่อไป...</p>
+    </div>
+
+    <!-- หน้าต่างตกรอบ -->
     <div id="eliminated-screen" class="card">
-        <div class="big-icon">💀</div>
-        <h1 style="color: #ef4444;">ตกรอบ!</h1>
-        <p style="color: #cbd5e1; margin-top: 10px;">ทีมของคุณพ่ายแพ้ในสมรภูมินี้</p>
-        <p style="color: #94a3b8; margin-top: 5px;">ขอบคุณที่ร่วมสนุก!</p>
-        <button class="btn-3d btn-leave" onclick="location.reload()">ออกจากการแข่งขัน</button>
+        <h1 style="font-size: 4em;">💀</h1>
+        <h2 style="color: #ef4444;">คุณตกรอบแล้ว!</h2>
+        <p style="color: #cbd5e1; margin-top: 10px;">ขอบคุณที่มาร่วมสนุกกันนะ</p>
     </div>
 
-    <!-- 6. หน้าผู้ชนะแชมป์เปี้ยน -->
+    <!-- หน้าต่างแชมป์เปี้ยน -->
     <div id="champion-screen" class="card">
-        <div class="big-icon">🏆</div>
-        <h1 style="color: #facc15; font-size: 2.5em;">CHAMPION!</h1>
-        <p style="color: #cbd5e1; margin-top: 10px; font-size: 1.2em;">คุณคือผู้ชนะคนสุดท้าย!</p>
-        <button class="btn-3d btn-leave" onclick="location.reload()">กลับสู่หน้าหลัก</button>
+        <h1 style="font-size: 5em;">🏆</h1>
+        <h2 style="color: #facc15; font-size: 2.5em;">ยินดีด้วย!</h2>
+        <p style="color: white; font-size: 1.2em;">คุณคือผู้รอดชีวิตคนสุดท้าย!</p>
     </div>
 
     <script>
         const socket = io();
-        let currentRoomCode = '';
-        let myName = '';
-        let myTeam = '';
+        let currentRoomCode = ''; let myTeam = ''; let isRejoining = false;
 
-        function switchScreen(screenId) {
-            ['login-screen', 'team-select-screen', 'waiting-screen', 'quiz-screen', 'eliminated-screen', 'champion-screen'].forEach(id => {
-                document.getElementById(id).style.display = id === screenId ? 'block' : 'none';
-            });
-        }
-
-        function firstLogin() {
-            currentRoomCode = document.getElementById('pin-input').value;
-            myName = document.getElementById('name-input').value;
-            if (!currentRoomCode || currentRoomCode.length !== 6) return alert('รหัส PIN 6 หลัก!');
-            if (!myName.trim()) return alert('ตั้งชื่อก่อนครับ!');
-            switchScreen('team-select-screen');
-        }
-
-        function joinTeam(team) {
+        function joinRoom(team) {
             myTeam = team;
-            socket.emit('join_room', { roomCode: currentRoomCode, name: myName, team: team });
+            if (isRejoining) {
+                socket.emit('rejoin_team', { roomCode: currentRoomCode, team });
+            } else {
+                const pin = document.getElementById('pin-input').value;
+                const name = document.getElementById('name-input').value;
+                if (!pin || !name.trim()) return alert('กรอกข้อมูลให้ครบครับ!');
+                currentRoomCode = pin;
+                socket.emit('join_room', { roomCode: pin, name, team });
+            }
         }
 
-        socket.on('join_error', (msg) => { alert(msg); switchScreen('team-select-screen'); });
+        socket.on('join_error', (msg) => alert(msg));
 
         socket.on('join_success', (data) => {
-            switchScreen('waiting-screen');
-            document.getElementById('wait-team-text').innerText = data.team === 'RED' ? '🔴 ทีมแดง' : '🔵 ทีมน้ำเงิน';
-            document.getElementById('wait-team-text').style.color = data.team === 'RED' ? '#ef4444' : '#3b82f6';
-            document.getElementById('my-team-hud').innerText = data.team === 'RED' ? '🔴 RED TEAM' : '🔵 BLUE TEAM';
+            document.getElementById('join-screen').style.display = 'none';
+            document.getElementById('waiting-screen').style.display = 'block';
+            document.getElementById('welcome-text').innerText = data.name;
+            const avatarClass = data.team === 'RED' ? 'my-team-red' : 'my-team-blue';
+            document.getElementById('wait-avatar').className = `my-avatar ${avatarClass}`;
+            document.getElementById('quiz-avatar').className = `my-avatar ${avatarClass}`;
         });
 
-        socket.on('match_started', () => {
-            switchScreen('quiz-screen');
-        });
+        socket.on('match_started', () => { document.getElementById('timer').innerText = '60'; });
 
-        // แถบเวลา 60 วิ
-        socket.on('round_timer_tick', (t) => {
-            const percent = (t / 60) * 100;
-            document.getElementById('round-time-bar').style.width = `${percent}%`;
-        });
+        socket.on('new_question', (qData) => {
+            document.getElementById('waiting-screen').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'none';
+            document.getElementById('quiz-screen').style.display = 'block';
+            document.getElementById('q-text').innerText = qData.q;
+            document.getElementById('my-team-text').innerText = myTeam === 'RED' ? '🔴 RED' : '🔵 BLUE';
 
-        // คำถามไหลมาเรื่อยๆ ไม่ต้องรอ
-        socket.on('new_question', (data) => {
-            document.getElementById('q-text').innerText = data.questionData.q;
-            document.getElementById('ans-feedback').innerText = ''; // เคลียร์สถานะตอบ
             for (let i = 0; i < 4; i++) {
                 const btn = document.getElementById(`c${i}`);
-                btn.innerText = data.questionData.choices[i];
-                btn.disabled = false;
-                btn.className = 'choice-btn';
+                btn.innerText = qData.choices[i];
+                btn.disabled = false; btn.className = 'choice-btn';
             }
         });
 
+        socket.on('timer_tick', (t) => { document.getElementById('timer').innerText = t < 10 ? `0${t}` : t; });
+
         function sendAns(idx) {
-            socket.emit('submit_answer', { roomCode: currentRoomCode, answerIndex: idx });
-            for (let i = 0; i < 4; i++) { document.getElementById(`c${i}`).disabled = true; }
+            const qText = document.getElementById('q-text').innerText;
+            socket.emit('submit_answer', { roomCode: currentRoomCode, answerIndex: idx, qText });
+            for (let i = 0; i < 4; i++) document.getElementById(`c${i}`).disabled = true;
             document.getElementById(`c${idx}`).classList.add('selected');
+            const avatar = document.getElementById('quiz-avatar');
+            avatar.classList.add('anim-pull');
+            setTimeout(() => avatar.classList.remove('anim-pull'), 300);
         }
 
         socket.on('answer_result', (data) => {
-            const feedback = document.getElementById('ans-feedback');
-            if (data.isCorrect) {
-                feedback.innerText = `✅ ตอบถูก! +${data.power} แรงดึง`;
-                feedback.style.color = '#00ffcc';
-            } else {
-                feedback.innerText = `❌ ตอบผิด! (รอข้อต่อไป)`;
-                feedback.style.color = '#ef4444';
-            }
+            setTimeout(() => {
+                document.getElementById('quiz-screen').style.display = 'none';
+                document.getElementById('result-screen').style.display = 'block';
+                document.getElementById('res-icon').innerText = data.isCorrect ? '🎯' : '❌';
+                document.getElementById('res-title').innerText = data.isCorrect ? 'ดึงสำเร็จ!' : 'วืดดด!';
+            }, 300);
         });
 
-        // กรณีทีมชนะและรอดชีวิต ให้กลับไปหน้าเลือกทีมสำหรับรอบต่อไป
-        socket.on('round_win', () => {
-            switchScreen('team-select-screen');
+        // เข้ารอบต่อไป ให้เลือกทีมใหม่
+        socket.on('pick_team_again', () => {
+            isRejoining = true;
+            document.getElementById('quiz-screen').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'none';
+            document.getElementById('join-screen').style.display = 'block';
+            document.getElementById('pin-input').style.display = 'none';
+            document.getElementById('name-input').style.display = 'none';
+            document.getElementById('join-title').innerText = '🔥 คุณเข้ารอบ! เลือกทีมลุยต่อ';
         });
 
-        // กรณีแพ้
+        // แพ้ตกรอบ
         socket.on('eliminated', () => {
-            switchScreen('eliminated-screen');
+            document.getElementById('quiz-screen').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'none';
+            document.getElementById('eliminated-screen').style.display = 'block';
         });
 
-        // กรณีแชมป์เปี้ยน
-        socket.on('you_are_champion', () => {
-            switchScreen('champion-screen');
+        // แชมป์คนสุดท้าย
+        socket.on('champion', () => {
+            document.getElementById('quiz-screen').style.display = 'none';
+            document.getElementById('result-screen').style.display = 'none';
+            document.getElementById('champion-screen').style.display = 'block';
         });
     </script>
 </body>
