@@ -83,7 +83,7 @@
 
     <div id="lock-screen"><h1 style="font-size: 3em;">🔒 ACCESS DENIED</h1><p>เฉพาะ Host เติม ?admin=true</p></div>
     <div id="create-screen" style="display:none;"><button class="btn-create" onclick="createRoom()">➕ สร้างห้อง</button></div>
-    <div id="champion-screen" style="display:none;"><h2 style="font-size: 3em; color: white;">👑 THE GRAND CHAMPION 👑</h2><div class="champ-title" id="champ-name"></div></div>
+    <div id="champion-screen" style="display:none;"></div>
 
     <div class="ui-layer" id="ui-layer" style="display:none;">
         <div class="header ui-content">
@@ -227,7 +227,20 @@
             document.getElementById('ui-layer').style.display = 'none';
             document.getElementById('arena-screen').style.display = 'none';
             document.getElementById('champion-screen').style.display = 'flex';
-            document.getElementById('champ-name').innerText = data.name;
+            document.getElementById('champion-screen').innerHTML = `
+                <h2 style="font-size: 3em; color: white;">👑 THE GRAND CHAMPION 👑</h2>
+                <div class="champ-title">${data.name}</div>
+            `;
+        });
+        
+        socket.on('game_over', () => {
+            document.getElementById('ui-layer').style.display = 'none';
+            document.getElementById('arena-screen').style.display = 'none';
+            document.getElementById('champion-screen').style.display = 'flex';
+            document.getElementById('champion-screen').innerHTML = `
+                <h2 style="font-size: 4em; color: #ef4444;">💀 GAME OVER 💀</h2>
+                <div class="champ-title" style="color: white; font-size: 3em; margin-top:20px;">ผู้เล่นตกรอบหมดแล้ว!</div>
+            `;
         });
     </script>
 </body>
