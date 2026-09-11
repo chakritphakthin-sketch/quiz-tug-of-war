@@ -131,10 +131,7 @@ io.on('connection', (socket) => {
     socket.on('join_room', ({ roomCode, name, team }) => {
         const room = rooms[roomCode];
         if (!room || room.state !== 'waiting') return socket.emit('join_error', 'เกมเริ่มไปแล้ว หรือห้องไม่มีอยู่จริง!');
-
-        // --- แก้ปัญหาที่ 1: ป้องกันคนเข้ากลางคันหลังจากเริ่มรอบ 1 ไปแล้ว ---
         if (room.roundNumber > 1) return socket.emit('join_error', 'ไม่สามารถเข้าร่วมได้ เนื่องจากเกมผ่านรอบแรกไปแล้ว!');
-        // -----------------------------------------------------------
 
         const teamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
         if (teamPlayers.length >= room.allowedPerTeam) return socket.emit('join_error', `ทีมเต็มแล้ว! (รับสูงสุด ${room.allowedPerTeam} คนต่อทีม)`);
@@ -216,10 +213,10 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
 
-        // Auto-assign คนที่ค้างหน้าเลือกทีมให้ลงทีมอัตโนมัติ
+        // Auto-assign คน/บอท ที่ยังค้างสถานะ survived ให้ลงทีมอัตโนมัติ
         for (let pId in room.players) {
             let p = room.players[pId];
-            if (p.status === 'survived' && !p.isBot) {
+            if (p.status === 'survived') {
                 let redCount = Object.values(room.players).filter(pl => pl.team === 'RED' && pl.status === 'active').length;
                 let blueCount = Object.values(room.players).filter(pl => pl.team === 'BLUE' && pl.status === 'active').length;
                 
@@ -233,7 +230,9 @@ io.on('connection', (socket) => {
                 while (usedSlots.has(freeSlot)) freeSlot++;
                 p.slot = freeSlot;
                 
-                io.to(p.id).emit('join_success', { name: p.name, team: p.team, slot: p.slot, roomCode });
+                if (!p.isBot) {
+                    io.to(p.id).emit('join_success', { name: p.name, team: p.team, slot: p.slot, roomCode });
+                }
             }
         }
 
@@ -311,56 +310,90 @@ io.on('connection', (socket) => {
 
         let winningTeam = room.ropePosition > 50 ? 'BLUE' : (room.ropePosition < 50 ? 'RED' : (Math.random() > 0.5 ? 'RED' : 'BLUE'));
         let realSurvivors = [];
+        let botSurvivors = [];
 
-        // เคลียร์สถานะของคนและลบบอททิ้ง
+        // 1. แยกผู้รอดชีวิตและคัดผู้ตกรอบ
         for (let pId in room.players) {
             let p = room.players[pId];
-            if (p.isBot) { 
-                delete room.players[pId]; 
-                continue; 
-            }
             if (p.status === 'active') {
                 if (p.team === winningTeam) {
                     p.status = 'survived'; 
                     p.team = null; 
-                    realSurvivors.push(p);
+                    if (p.isBot) {
+                        botSurvivors.push(p);
+                    } else {
+                        realSurvivors.push(p);
+                    }
                 } else {
-                    p.status = 'eliminated'; 
-                    io.to(pId).emit('eliminated');
+                    // ผู้แพ้ (ตกรอบ)
+                    if (p.isBot) { 
+                        delete room.players[pId]; 
+                    } else {
+                        p.status = 'eliminated';
+                        io.to(pId).emit('eliminated');
+                        // แก้ปัญหาที่ 2: ตัด Socket ของคนที่แพ้ออกจากห้อง เพื่อไม่ให้ได้รับ Broadcast รอบถัดไป
+                        const elimSocket = io.sockets.sockets.get(pId);
+                        if (elimSocket && pId !== room.hostId) {
+                            elimSocket.leave(roomCode);
+                        }
+                        delete room.players[pId]; // ลบข้อมูลจากผู้เล่นแอคทีฟ
+                    }
                 }
             }
         }
 
-        room.botCount = 0;
+        const totalSurvivors = realSurvivors.length + botSurvivors.length;
 
-        // แก้ลอจิกให้จบทัวร์นาเมนต์เมื่อครบ 5 รอบเท่านั้น (หรือตายเกลี้ยง)
-        if (realSurvivors.length === 0) {
+        // 2. เช็คเงื่อนไขจบทัวร์นาเมนต์
+        if (totalSurvivors === 0) {
             room.state = 'ended'; 
-            io.to(roomCode).emit('game_over'); // ไม่มีใครชนะเลยตายเรียบ
+            io.to(roomCode).emit('game_over');
         } else if (room.roundNumber >= 5) {
             room.state = 'ended'; 
-            let champName = realSurvivors.map(p => p.name).join(', '); // รวมชื่อแชมป์กรณีมีมากกว่า 1 คนในรอบสุดท้าย (ปกติจะ 1)
-            // ส่งรายชื่อคนรอดชีวิตไปให้ฝั่ง Client เช็คว่าตัวเองคือแชมป์หรือไม่
+            let allWinners = realSurvivors.concat(botSurvivors);
+            let champName = allWinners.map(p => p.name).join(', ');
             io.to(roomCode).emit('champion', { name: champName, survivorIds: realSurvivors.map(p => p.id) });
         } else {
-            // เดินหน้าสู่รอบถัดไปแม้จะเหลือผู้เล่นจริงแค่ 1 คนก็ตาม
+            // เดินหน้าสู่รอบถัดไป
             room.state = 'waiting'; 
             room.roundNumber++;
             
-            // --- แก้ปัญหาที่ 2 & 3: รีเซ็ตเชือกให้กลับมาอยู่ตรงกลาง (50) และอัปเดตไปที่หน้าจอทุกคน ---
             room.ropePosition = 50;
             io.to(roomCode).emit('update_rope', { ropePosition: 50 });
-            // ----------------------------------------------------------------------
-            
-            // ปรับลดโควต้า 16 -> 8 -> 4 -> 2 -> 1
+
             let slotIndex = room.roundNumber - 1;
             if (slotIndex > 4) slotIndex = 4;
             room.allowedPerTeam = TOURNAMENT_SLOTS[slotIndex];
-            
+
+            // แก้ปัญหาที่ 1: จัดการกระจาย บอท ที่รอดชีวิตเข้าทีมอัตโนมัติในรอบใหม่ทันที
+            botSurvivors.forEach(bot => {
+                let redCount = Object.values(room.players).filter(pl => pl.team === 'RED' && pl.status === 'active').length;
+                let blueCount = Object.values(room.players).filter(pl => pl.team === 'BLUE' && pl.status === 'active').length;
+
+                let targetTeam = (redCount <= blueCount) ? 'RED' : 'BLUE';
+                if (redCount >= room.allowedPerTeam && blueCount < room.allowedPerTeam) targetTeam = 'BLUE';
+                if (blueCount >= room.allowedPerTeam && redCount < room.allowedPerTeam) targetTeam = 'RED';
+
+                let currentTeamCount = Object.values(room.players).filter(pl => pl.team === targetTeam && pl.status === 'active').length;
+                if (currentTeamCount < room.allowedPerTeam) {
+                    bot.team = targetTeam;
+                    bot.status = 'active';
+                    let freeSlot = 0;
+                    const usedSlots = new Set(Object.values(room.players).filter(pl => pl.team === targetTeam && pl.status === 'active').map(pl => pl.slot));
+                    while (usedSlots.has(freeSlot)) freeSlot++;
+                    bot.slot = freeSlot;
+                } else {
+                    delete room.players[bot.id]; // โควต้ารอบใหม่เต็มตัดบอทส่วนเกินออก
+                }
+            });
+
+            // แจ้งเตือนผู้เล่นจริงที่รอดชีวิตเลือกทีมใหม่
             realSurvivors.forEach(p => io.to(p.id).emit('pick_team_again'));
+
+            const activeBotsCount = Object.values(room.players).filter(p => p.isBot && p.status === 'active').length;
             io.to(roomCode).emit('round_end', { 
                 winningTeam, 
-                survivors: realSurvivors.length, 
+                survivors: realSurvivors.length + activeBotsCount, 
                 roundNumber: room.roundNumber,
                 allowedPerTeam: room.allowedPerTeam
             });
