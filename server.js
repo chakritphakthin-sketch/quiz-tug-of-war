@@ -12,6 +12,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 const ROUND_TIME = 60; 
 const rooms = {};
 
+// ลอจิกจำกัด Slot Tournament 5 รอบ (Index 0 = รอบ 1)
+const TOURNAMENT_SLOTS = [16, 8, 4, 2, 1];
+
 // --- ชุดคำถามแยกตามรอบ ---
 const questionsRound1 = [
     { q: "1. ค่าความดันโลหิตปกติในผู้ใหญ่ควรน้อยกว่าเท่าใด?", choices: ["140/90 มม.ปรอท", "120/80 มม.ปรอท"], answer: 1 },
@@ -82,7 +85,6 @@ function getBaseQuestions(roundNumber) {
     return [...questionsRound5Raw];
 }
 
-// ฟังก์ชันสับไพ่
 function shuffleArray(array) {
     let curId = array.length;
     while (0 !== curId) {
@@ -95,14 +97,13 @@ function shuffleArray(array) {
     return array;
 }
 
-// ระบบดึงคำถามแบบกอง (ดึงทีละใบจนหมดแล้วค่อยสับใหม่)
 function getNextQuestionForPlayer(player, roundNumber) {
     if (!player.questionBag || player.questionBag.length === 0) {
         player.questionBag = shuffleArray(getBaseQuestions(roundNumber));
     }
     const qRaw = player.questionBag.pop();
 
-    if (roundNumber >= 5) { // 1v1 (สุ่มสลับคำตอบ)
+    if (roundNumber >= 5) {
         const isCorrectFirst = Math.random() < 0.5;
         return {
             q: qRaw.q,
@@ -122,15 +123,14 @@ function generateRoomCode() {
 io.on('connection', (socket) => {
     socket.on('create_room', () => {
         const roomCode = generateRoomCode();
-        // allowedPerTeam เริ่มต้น 16 คนสำหรับรอบแรก
-        rooms[roomCode] = { hostId: socket.id, players: {}, state: 'waiting', ropePosition: 50, botCount: 0, roundNumber: 1, allowedPerTeam: 16 };
+        rooms[roomCode] = { hostId: socket.id, players: {}, state: 'waiting', ropePosition: 50, botCount: 0, roundNumber: 1, allowedPerTeam: TOURNAMENT_SLOTS[0] };
         socket.join(roomCode);
         socket.emit('room_created', { roomCode });
     });
 
     socket.on('join_room', ({ roomCode, name, team }) => {
         const room = rooms[roomCode];
-        if (!room || room.state !== 'waiting') return socket.emit('join_error', 'ห้องเริ่มแข่งไปแล้ว หรือไม่มีอยู่จริง!');
+        if (!room || room.state !== 'waiting') return socket.emit('join_error', 'เกมเริ่มไปแล้ว หรือห้องไม่มีอยู่จริง!');
 
         const teamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
         if (teamPlayers.length >= room.allowedPerTeam) return socket.emit('join_error', `ทีมเต็มแล้ว! (รับสูงสุด ${room.allowedPerTeam} คนต่อทีม)`);
@@ -151,7 +151,7 @@ io.on('connection', (socket) => {
         if (!player || player.team === targetTeam) return;
 
         const targetTeamPlayers = Object.values(room.players).filter(p => p.team === targetTeam && p.status === 'active');
-        if (targetTeamPlayers.length >= room.allowedPerTeam) return socket.emit('join_error', `ทีมเต็ม!`);
+        if (targetTeamPlayers.length >= room.allowedPerTeam) return socket.emit('join_error', `ทีมเต็มแล้ว!`);
 
         let freeSlot = 0;
         while (targetTeamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
@@ -167,15 +167,17 @@ io.on('connection', (socket) => {
         const player = room.players[socket.id];
         if (!player || player.status !== 'survived') return;
 
-        let freeSlot = 0;
-        while (Object.values(room.players).filter(p => p.team === team && p.status === 'active').map(p => p.slot).includes(freeSlot)) freeSlot++;
+        const teamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
+        if (teamPlayers.length >= room.allowedPerTeam) return socket.emit('join_error', `ทีมเต็มแล้ว! (รับสูงสุด ${room.allowedPerTeam} คนต่อทีม)`);
 
-        player.team = team; player.slot = freeSlot; player.status = 'active'; player.questionBag = []; // รีเซ็ตซองคำถาม
+        let freeSlot = 0;
+        while (teamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
+
+        player.team = team; player.slot = freeSlot; player.status = 'active'; player.questionBag = []; 
         socket.emit('join_success', { name: player.name, team, slot: freeSlot, roomCode });
         updateLobby(roomCode);
     });
 
-    // โฮสต์เพิ่มบอท
     socket.on('add_bot', ({ roomCode, team }) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id || room.state !== 'waiting') return;
@@ -192,15 +194,11 @@ io.on('connection', (socket) => {
         updateLobby(roomCode);
     });
 
-    // โฮสต์เตะผู้เล่น/บอท
     socket.on('kick_player', ({ roomCode, targetId }) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
-        
         if (room.players[targetId]) {
-            if (!room.players[targetId].isBot) {
-                io.to(targetId).emit('kicked');
-            }
+            if (!room.players[targetId].isBot) io.to(targetId).emit('kicked');
             delete room.players[targetId];
             updateLobby(roomCode);
         }
@@ -210,10 +208,30 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
 
+        // Auto-assign คนที่ค้างหน้าเลือกทีมให้ลงทีมอัตโนมัติ เพื่อป้องกันการค้างหน้าจอ
+        for (let pId in room.players) {
+            let p = room.players[pId];
+            if (p.status === 'survived' && !p.isBot) {
+                let redCount = Object.values(room.players).filter(pl => pl.team === 'RED' && pl.status === 'active').length;
+                let blueCount = Object.values(room.players).filter(pl => pl.team === 'BLUE' && pl.status === 'active').length;
+                
+                let targetTeam = (redCount <= blueCount) ? 'RED' : 'BLUE';
+                if (redCount >= room.allowedPerTeam && blueCount < room.allowedPerTeam) targetTeam = 'BLUE';
+                if (blueCount >= room.allowedPerTeam && redCount < room.allowedPerTeam) targetTeam = 'RED';
+
+                p.team = targetTeam; p.status = 'active'; p.questionBag = [];
+                let freeSlot = 0;
+                while (Object.values(room.players).filter(pl => pl.team === targetTeam && pl.status === 'active').map(pl => pl.slot).includes(freeSlot)) freeSlot++;
+                p.slot = freeSlot;
+                
+                io.to(p.id).emit('join_success', { name: p.name, team: p.team, slot: p.slot, roomCode });
+            }
+        }
+
         room.state = 'playing'; room.ropePosition = 50;
         io.to(roomCode).emit('match_started');
+        updateLobby(roomCode);
 
-        // ส่งคำถาม
         for (let pId in room.players) {
             if (!room.players[pId].isBot && room.players[pId].status === 'active') {
                 const nextQ = getNextQuestionForPlayer(room.players[pId], room.roundNumber);
@@ -225,13 +243,11 @@ io.on('connection', (socket) => {
         room.botInterval = setInterval(() => {
             if (room.state !== 'playing') return;
             let redForce = 0, blueForce = 0;
-
             Object.values(room.players).forEach(p => {
                 if (p.isBot && p.status === 'active' && Math.random() > 0.45) {
                     p.team === 'RED' ? redForce += 1.8 : blueForce += 1.8;
                 }
             });
-
             if (redForce > 0 || blueForce > 0) {
                 room.ropePosition -= (redForce - blueForce);
                 if (room.ropePosition < 5) room.ropePosition = 5;
@@ -277,7 +293,7 @@ io.on('connection', (socket) => {
                 player.currentQuestion = nextQ;
                 socket.emit('new_question', nextQ);
             }
-        }, 1000); // Server หน่วง 1 วิแล้วค่อยส่งข้อใหม่ (Client จะปลดล็อคปุ่มตอนรับ event นี้)
+        }, 1000);
     });
 
     function endRound(roomCode) {
@@ -289,27 +305,50 @@ io.on('connection', (socket) => {
 
         for (let pId in room.players) {
             let p = room.players[pId];
-            if (p.isBot) { delete room.players[pId]; continue; }
-            if (p.team === winningTeam) {
-                p.status = 'survived'; p.team = null; realSurvivors.push(p);
-            } else {
-                p.status = 'eliminated'; io.to(pId).emit('eliminated');
+            
+            if (p.isBot) { 
+                delete room.players[pId]; // ลบบอทออกทั้งหมดเพื่อให้โฮสต์ใส่ใหม่ตามโควต้ารอบหน้า
+                continue; 
+            }
+            
+            if (p.status === 'active') { // เช็คเฉพาะคนที่กำลังเล่นในรอบนี้ (แก้บั๊กคนตกรอบคืนชีพ)
+                if (p.team === winningTeam) {
+                    p.status = 'survived'; 
+                    p.team = null; 
+                    realSurvivors.push(p);
+                } else {
+                    p.status = 'eliminated'; 
+                    io.to(pId).emit('eliminated');
+                }
             }
         }
 
-        if (realSurvivors.length === 1) {
-            room.state = 'ended'; io.to(roomCode).emit('champion', { name: realSurvivors[0].name });
+        room.botCount = 0;
+
+        if (room.roundNumber >= 5 || realSurvivors.length === 1) {
+            room.state = 'ended'; 
+            let champName = realSurvivors.length > 0 ? realSurvivors[0].name : "ไม่มีผู้ชนะ";
+            io.to(roomCode).emit('champion', { name: champName });
         } else if (realSurvivors.length > 1) {
             room.state = 'waiting'; 
             room.roundNumber++;
-            // คำนวณ Slot จำกัดของแต่ละทีมรอบถัดไป จาก (ผู้รอดชีวิต หาร 2) ปัดขึ้น
-            room.allowedPerTeam = Math.ceil(realSurvivors.length / 2);
+            
+            // ปรับลดโควต้า 16 -> 8 -> 4 -> 2 -> 1
+            let slotIndex = room.roundNumber - 1;
+            if (slotIndex > 4) slotIndex = 4;
+            room.allowedPerTeam = TOURNAMENT_SLOTS[slotIndex];
             
             realSurvivors.forEach(p => io.to(p.id).emit('pick_team_again'));
-            io.to(roomCode).emit('round_end', { winningTeam, survivors: realSurvivors.length, roundNumber: room.roundNumber });
+            io.to(roomCode).emit('round_end', { 
+                winningTeam, 
+                survivors: realSurvivors.length, 
+                roundNumber: room.roundNumber,
+                allowedPerTeam: room.allowedPerTeam
+            });
             updateLobby(roomCode);
         } else {
-            room.state = 'ended'; io.to(roomCode).emit('game_over');
+            room.state = 'ended'; 
+            io.to(roomCode).emit('game_over');
         }
     }
 
