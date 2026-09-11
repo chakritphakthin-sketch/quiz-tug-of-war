@@ -132,11 +132,16 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         if (!room || room.state !== 'waiting') return socket.emit('join_error', 'เกมเริ่มไปแล้ว หรือห้องไม่มีอยู่จริง!');
 
+        // --- แก้ปัญหาที่ 1: ป้องกันคนเข้ากลางคันหลังจากเริ่มรอบ 1 ไปแล้ว ---
+        if (room.roundNumber > 1) return socket.emit('join_error', 'ไม่สามารถเข้าร่วมได้ เนื่องจากเกมผ่านรอบแรกไปแล้ว!');
+        // -----------------------------------------------------------
+
         const teamPlayers = Object.values(room.players).filter(p => p.team === team && p.status === 'active');
         if (teamPlayers.length >= room.allowedPerTeam) return socket.emit('join_error', `ทีมเต็มแล้ว! (รับสูงสุด ${room.allowedPerTeam} คนต่อทีม)`);
 
         let freeSlot = 0;
-        while (teamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
+        const usedSlots = new Set(teamPlayers.map(p => p.slot));
+        while (usedSlots.has(freeSlot)) freeSlot++;
 
         room.players[socket.id] = { id: socket.id, name: name.trim() || 'Player', team, slot: freeSlot, status: 'active', isBot: false, questionBag: [] };
         socket.join(roomCode);
@@ -154,7 +159,8 @@ io.on('connection', (socket) => {
         if (targetTeamPlayers.length >= room.allowedPerTeam) return socket.emit('join_error', `ทีมเต็มแล้ว!`);
 
         let freeSlot = 0;
-        while (targetTeamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
+        const usedSlots = new Set(targetTeamPlayers.map(p => p.slot));
+        while (usedSlots.has(freeSlot)) freeSlot++;
 
         player.team = targetTeam; player.slot = freeSlot;
         socket.emit('team_switched', { team: targetTeam, slot: freeSlot });
@@ -171,7 +177,8 @@ io.on('connection', (socket) => {
         if (teamPlayers.length >= room.allowedPerTeam) return socket.emit('join_error', `ทีมเต็มแล้ว! (รับสูงสุด ${room.allowedPerTeam} คนต่อทีม)`);
 
         let freeSlot = 0;
-        while (teamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
+        const usedSlots = new Set(teamPlayers.map(p => p.slot));
+        while (usedSlots.has(freeSlot)) freeSlot++;
 
         player.team = team; player.slot = freeSlot; player.status = 'active'; player.questionBag = []; 
         socket.emit('join_success', { name: player.name, team, slot: freeSlot, roomCode });
@@ -186,7 +193,8 @@ io.on('connection', (socket) => {
         if (teamPlayers.length >= room.allowedPerTeam) return;
 
         let freeSlot = 0;
-        while (teamPlayers.map(p => p.slot).includes(freeSlot)) freeSlot++;
+        const usedSlots = new Set(teamPlayers.map(p => p.slot));
+        while (usedSlots.has(freeSlot)) freeSlot++;
 
         room.botCount++;
         const botId = `bot_${Date.now()}_${room.botCount}`;
@@ -221,7 +229,8 @@ io.on('connection', (socket) => {
 
                 p.team = targetTeam; p.status = 'active'; p.questionBag = [];
                 let freeSlot = 0;
-                while (Object.values(room.players).filter(pl => pl.team === targetTeam && pl.status === 'active').map(pl => pl.slot).includes(freeSlot)) freeSlot++;
+                const usedSlots = new Set(Object.values(room.players).filter(pl => pl.team === targetTeam && pl.status === 'active').map(pl => pl.slot));
+                while (usedSlots.has(freeSlot)) freeSlot++;
                 p.slot = freeSlot;
                 
                 io.to(p.id).emit('join_success', { name: p.name, team: p.team, slot: p.slot, roomCode });
@@ -337,6 +346,11 @@ io.on('connection', (socket) => {
             // เดินหน้าสู่รอบถัดไปแม้จะเหลือผู้เล่นจริงแค่ 1 คนก็ตาม
             room.state = 'waiting'; 
             room.roundNumber++;
+            
+            // --- แก้ปัญหาที่ 2 & 3: รีเซ็ตเชือกให้กลับมาอยู่ตรงกลาง (50) และอัปเดตไปที่หน้าจอทุกคน ---
+            room.ropePosition = 50;
+            io.to(roomCode).emit('update_rope', { ropePosition: 50 });
+            // ----------------------------------------------------------------------
             
             // ปรับลดโควต้า 16 -> 8 -> 4 -> 2 -> 1
             let slotIndex = room.roundNumber - 1;
