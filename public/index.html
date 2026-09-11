@@ -138,11 +138,15 @@
     </div>
 
     <div class="modal-overlay" id="eliminated-modal" style="display:none;">
-        <div class="card"><h1 style="font-size:4em;">💀</h1><h2 style="color:#ef4444;">ตกรอบ!</h2><p>ขอบคุณที่ร่วมสนุก</p></div>
+        <div class="card"><h1 style="font-size:4em;">💀</h1><h2 style="color:#ef4444;" id="eliminated-title">ตกรอบ!</h2><p id="eliminated-desc">ขอบคุณที่ร่วมสนุก</p></div>
     </div>
 
     <div class="modal-overlay" id="champion-modal" style="display:none;">
-        <div class="card" style="border-color:#facc15;"><h1 style="font-size:5em;">🏆</h1><h2 style="color:#facc15;">CHAMPION</h2><p>ผู้รอดชีวิตคนสุดท้าย!</p></div>
+        <div class="card" style="border-color:#facc15;">
+            <h1 style="font-size:5em;">🏆</h1>
+            <h2 style="color:#facc15;" id="champ-announce">CHAMPION</h2>
+            <p id="champ-name-display" style="font-size: 1.2em; font-weight: bold;">ผู้รอดชีวิตคนสุดท้าย!</p>
+        </div>
     </div>
 
     <script>
@@ -192,7 +196,7 @@
 
         socket.on('join_success', (data) => {
             currentRoomCode = data.roomCode;
-            document.getElementById('join-modal').style.display = 'none'; // ปิดหน้าต่างให้ชัวร์
+            document.getElementById('join-modal').style.display = 'none'; 
             document.getElementById('display-pin').innerText = `PIN: ${currentRoomCode}`;
             document.getElementById('wait-status').style.display = 'block';
             document.getElementById('bottom-join-bar').style.display = 'flex';
@@ -237,7 +241,6 @@
         });
 
         socket.on('match_started', () => {
-            // บังคับเคลียร์หน้าต่างทั้งหมดที่ค้างอยู่
             document.getElementById('join-modal').style.display = 'none';
             document.getElementById('eliminated-modal').style.display = 'none';
             document.getElementById('wait-status').style.display = 'none';
@@ -314,10 +317,31 @@
             document.getElementById('quiz-overlay').style.display = 'none'; 
             document.getElementById('eliminated-modal').style.display = 'flex'; 
         });
-        
-        socket.on('champion', () => { 
+
+        socket.on('game_over', () => {
             document.getElementById('quiz-overlay').style.display = 'none'; 
+            document.getElementById('eliminated-modal').style.display = 'flex';
+            document.getElementById('eliminated-title').innerText = 'GAME OVER';
+            document.getElementById('eliminated-desc').innerText = 'ไม่มีผู้รอดชีวิตในทัวร์นาเมนต์นี้';
+        });
+        
+        socket.on('champion', (data) => { 
+            document.getElementById('quiz-overlay').style.display = 'none'; 
+            document.getElementById('eliminated-modal').style.display = 'none';
+            document.getElementById('join-modal').style.display = 'none';
             document.getElementById('champion-modal').style.display = 'flex'; 
+            
+            // เช็คว่าไอดีของเราอยู่ในรายชื่อแชมป์ที่เซิร์ฟเวอร์ส่งมาหรือไม่
+            if (data.survivorIds && data.survivorIds.includes(socket.id)) {
+                document.getElementById('champ-announce').innerText = "🎉 คุณคือแชมเปี้ยน! 🎉";
+                document.getElementById('champ-announce').style.color = "#facc15";
+                document.getElementById('champ-name-display').innerText = "สุดยอดผู้รอดชีวิตคนสุดท้าย!";
+            } else {
+                // คนอื่นที่ตายไปแล้วจะเห็นว่าใครเป็นแชมป์
+                document.getElementById('champ-announce').innerText = "🏆 จบทัวร์นาเมนต์";
+                document.getElementById('champ-announce').style.color = "#fff";
+                document.getElementById('champ-name-display').innerText = `แชมป์คือ: ${data.name}`;
+            }
         });
     </script>
 </body>
