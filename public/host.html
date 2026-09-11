@@ -67,7 +67,6 @@
         .player-name { position: absolute; background: rgba(0,0,0,0.85); padding: 2px 10px; border-radius: 6px; font-size: 14px; font-weight: bold; white-space: nowrap; border: 1px solid rgba(255,255,255,0.2); color: white; animation: float-name 1s infinite alternate ease-in-out; z-index: 15; }
         .pos-top .player-name { top: -30px; } .pos-bottom .player-name { bottom: -30px; }
 
-        /* ปุ่มเตะสำหรับโฮสต์ */
         .kick-btn { position: absolute; top: -15px; right: -25px; width: 24px; height: 24px; border-radius: 50%; background: #ef4444; color: white; font-weight: bold; border: 2px solid white; cursor: pointer; z-index: 20; display: flex; align-items: center; justify-content: center; font-size: 12px; pointer-events: auto; }
         .kick-btn:hover { background: #b91c1c; }
 
@@ -96,7 +95,7 @@
             </div>
         </div>
         <div class="timer-box ui-content" id="timer-box">60</div>
-        <div class="status-box ui-content" id="status-box">รอคนเข้าห้อง...</div>
+        <div class="status-box ui-content" id="status-box">รอคนเข้าห้อง (รอบ 1 - รับทีมละ 16 คน)</div>
         <div class="team-hud hud-red ui-content">🔴 RED (<span id="red-count">0</span>)</div>
         <div class="team-hud hud-blue ui-content">BLUE 🔵 (<span id="blue-count">0</span>)</div>
     </div>
@@ -127,7 +126,7 @@
         let currentRoomCode = '';
         let targetCameraScale = 0.85; 
         let currentCameraScale = 0.85;
-        let isGameStarted = false; // เก็บสถานะเกมเพื่อซ่อนปุ่มเตะ
+        let isGameStarted = false; 
 
         function renderCamera() {
             currentCameraScale += (targetCameraScale - currentCameraScale) * 0.05;
@@ -149,7 +148,7 @@
             socket.emit('start_match', { roomCode: currentRoomCode }); 
             document.getElementById('host-controls').style.display = 'none'; 
             isGameStarted = true;
-            updateLobbyDOM(lastPlayerData); // รีเฟรชเพื่อซ่อนปุ่มเตะ
+            updateLobbyDOM(lastPlayerData); 
         }
 
         socket.on('room_created', (data) => {
@@ -181,7 +180,6 @@
                 if (p.team === 'RED') { charDiv.style.left = `calc(50% - ${offsetPx}px)`; redNum++; } 
                 else { charDiv.style.left = `calc(50% + ${offsetPx}px)`; blueNum++; }
 
-                // ปุ่มเตะแสดงเฉพาะตอนยังไม่เริ่มเกม
                 const kickHtml = !isGameStarted ? `<button class="kick-btn" onclick="kickPlayer('${p.id}')">✕</button>` : '';
 
                 charDiv.innerHTML = `
@@ -219,9 +217,9 @@
 
         socket.on('round_end', (data) => {
             targetCameraScale = 0.85;
-            isGameStarted = false; // กลับมารอเริ่มใหม่ ปุ่มเตะจะแสดงได้
+            isGameStarted = false; 
             document.getElementById('timer-box').innerText = "00";
-            document.getElementById('status-box').innerText = `🏆 ทีม ${data.winningTeam} ชนะ! เลือกรอบต่อไป (ฝั่งละ ${Math.ceil(data.survivors / 2)} คน)`;
+            document.getElementById('status-box').innerText = `🏆 ทีม ${data.winningTeam} ชนะ! (รอบ ${data.roundNumber} - รับทีมละ ${data.allowedPerTeam} คน)`;
             document.getElementById('host-controls').style.display = 'flex';
         });
 
