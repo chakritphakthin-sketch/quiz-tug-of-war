@@ -208,7 +208,7 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
 
-        // Auto-assign คนที่ค้างหน้าเลือกทีมให้ลงทีมอัตโนมัติ เพื่อป้องกันการค้างหน้าจอ
+        // Auto-assign คนที่ค้างหน้าเลือกทีมให้ลงทีมอัตโนมัติ
         for (let pId in room.players) {
             let p = room.players[pId];
             if (p.status === 'survived' && !p.isBot) {
@@ -303,15 +303,14 @@ io.on('connection', (socket) => {
         let winningTeam = room.ropePosition > 50 ? 'BLUE' : (room.ropePosition < 50 ? 'RED' : (Math.random() > 0.5 ? 'RED' : 'BLUE'));
         let realSurvivors = [];
 
+        // เคลียร์สถานะของคนและลบบอททิ้ง
         for (let pId in room.players) {
             let p = room.players[pId];
-            
             if (p.isBot) { 
-                delete room.players[pId]; // ลบบอทออกทั้งหมดเพื่อให้โฮสต์ใส่ใหม่ตามโควต้ารอบหน้า
+                delete room.players[pId]; 
                 continue; 
             }
-            
-            if (p.status === 'active') { // เช็คเฉพาะคนที่กำลังเล่นในรอบนี้ (แก้บั๊กคนตกรอบคืนชีพ)
+            if (p.status === 'active') {
                 if (p.team === winningTeam) {
                     p.status = 'survived'; 
                     p.team = null; 
@@ -325,11 +324,17 @@ io.on('connection', (socket) => {
 
         room.botCount = 0;
 
-        if (room.roundNumber >= 5 || realSurvivors.length === 1) {
+        // แก้ลอจิกให้จบทัวร์นาเมนต์เมื่อครบ 5 รอบเท่านั้น (หรือตายเกลี้ยง)
+        if (realSurvivors.length === 0) {
             room.state = 'ended'; 
-            let champName = realSurvivors.length > 0 ? realSurvivors[0].name : "ไม่มีผู้ชนะ";
-            io.to(roomCode).emit('champion', { name: champName });
-        } else if (realSurvivors.length > 1) {
+            io.to(roomCode).emit('game_over'); // ไม่มีใครชนะเลยตายเรียบ
+        } else if (room.roundNumber >= 5) {
+            room.state = 'ended'; 
+            let champName = realSurvivors.map(p => p.name).join(', '); // รวมชื่อแชมป์กรณีมีมากกว่า 1 คนในรอบสุดท้าย (ปกติจะ 1)
+            // ส่งรายชื่อคนรอดชีวิตไปให้ฝั่ง Client เช็คว่าตัวเองคือแชมป์หรือไม่
+            io.to(roomCode).emit('champion', { name: champName, survivorIds: realSurvivors.map(p => p.id) });
+        } else {
+            // เดินหน้าสู่รอบถัดไปแม้จะเหลือผู้เล่นจริงแค่ 1 คนก็ตาม
             room.state = 'waiting'; 
             room.roundNumber++;
             
@@ -346,9 +351,6 @@ io.on('connection', (socket) => {
                 allowedPerTeam: room.allowedPerTeam
             });
             updateLobby(roomCode);
-        } else {
-            room.state = 'ended'; 
-            io.to(roomCode).emit('game_over');
         }
     }
 
